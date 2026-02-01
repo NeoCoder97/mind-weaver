@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Spider Aggregation{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>{% block title %}MindWeaver{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=0.3.1">
     <!-- Alpine.js for lightweight reactivity -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Chart.js for data visualization -->
@@ -14,12 +14,13 @@
     <header class="header">
         <div class="container">
             <h1 class="logo">
-                <a href="{{ url_for('index') }}">Spider Aggregation</a>
+                <a href="{{ url_for('index') }}">MindWeaver</a>
             </h1>
             <nav class="nav">
                 <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}active{% endif %}">仪表盘</a>
                 <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">文章列表</a>
                 <a href="{{ url_for('feeds') }}" class="{% if request.endpoint == 'feeds' %}active{% endif %}">订阅源</a>
+                <a href="{{ url_for('categories') }}" class="{% if request.endpoint == 'categories' %}active{% endif %}">分类</a>
                 <a href="{{ url_for('filter_rules') }}" class="{% if request.endpoint == 'filter_rules' %}active{% endif %}">过滤规则</a>
                 <a href="{{ url_for('settings') }}" class="{% if request.endpoint == 'settings' %}active{% endif %}">设置</a>
             </nav>
@@ -50,7 +51,7 @@
 
     <footer class="footer">
         <div class="container">
-            <p>Spider Aggregation v0.3.0 - 个人知识动态监测工具</p>
+            <p>MindWeaver v0.3.0 - 汇聚信息，提炼洞察</p>
         </div>
     </footer>
 

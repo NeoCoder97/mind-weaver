@@ -1,4 +1,4 @@
-# Spider Aggregation - 开发指南
+# MindWeaver - 开发指南
 
 ## 目录
 
@@ -25,7 +25,7 @@
 1. **克隆仓库**
    ```bash
    git clone <repository-url>
-   cd spider-aggregation
+   cd mind-weaver
    ```
 
 2. **安装 uv**（如果尚未安装）
@@ -47,7 +47,7 @@
 
 5. **验证安装**
    ```bash
-   uv run spider-aggregation --version
+   uv run mind-weaver --version
    ```
 
 ### 开发依赖
@@ -65,7 +65,7 @@ uv pip install pytest pytest-cov black ruff
 ## 项目结构
 
 ```
-spider-aggregation/
+mind-weaver/
 ├── src/spider_aggregation/      # 源代码
 │   ├── __init__.py
 │   ├── cli.py                   # CLI 入口

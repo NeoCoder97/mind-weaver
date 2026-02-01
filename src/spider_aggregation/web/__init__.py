@@ -1,5 +1,5 @@
 """
-Web UI for spider-aggregation.
+Web UI for mind-weaver.
 
 Simple Flask application for browsing entries and feeds.
 """

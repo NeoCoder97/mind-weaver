@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}分类 - MindWeaver{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>分类管理</h2>
+    <button type="button" class="btn btn-primary" onclick="showAddCategoryModal()">+ 添加分类</button>
+</div>
+
+<!-- Stats Summary -->
+<div class="dashboard-cards" style="margin-bottom: 2rem;">
+    <div class="dashboard-card">
+        <div class="dashboard-card-title">总分类数</div>
+        <div class="dashboard-card-value" id="total-categories">-</div>
+    </div>
+    <div class="dashboard-card">
+        <div class="dashboard-card-title">已启用</div>
+        <div class="dashboard-card-value" id="enabled-categories">-</div>
+    </div>
+    <div class="dashboard-card">
+        <div class="dashboard-card-title">订阅源总数</div>
+        <div class="dashboard-card-value" id="total-feeds-in-categories">-</div>
+    </div>
+</div>
+
+<!-- Categories List -->
+<div class="categories-list" id="categories-list">
+    {% for category in categories %}
+    <div class="category-card" data-category-id="{{ category.id }}" data-category-enabled="{{ category.enabled }}">
+        <div class="category-header">
+            <div class="category-title-row">
+                <div class="category-icon" {% if category.color %}style="background-color: {{ category.color }}"{% endif %}>
+                    {{ category.icon or '📁' }}
+                </div>
+                <h3 class="category-name">{{ category.name }}</h3>
+                <span class="category-status {% if category.enabled %}enabled{% else %}disabled{% endif %}">
+                    {{ "已启用" if category.enabled else "已禁用" }}
+                </span>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn-icon" onclick="showEditCategoryModal({{ category.id }})" title="编辑">✏️</button>
+                <button type="button" class="btn-icon" onclick="toggleCategory({{ category.id }})" title="{{ '禁用' if category.enabled else '启用' }}">
+                    {{ '⏸️' if category.enabled else '▶️' }}
+                </button>
+                <button type="button" class="btn-icon" onclick="showCategoryFeeds({{ category.id }})" title="查看订阅源">📊</button>
+                <button type="button" class="btn-icon" onclick="deleteCategory({{ category.id }})" title="删除">🗑️</button>
+            </div>
+        </div>
+        {% if category.description %}
+        <p class="category-description">{{ category.description }}</p>
+        {% endif %}
+        <div class="category-meta">
+            <span class="category-feed-count">
+                <strong>{{ category.feed_count }}</strong> 个订阅源
+            </span>
+            {% if category.created_at %}
+            <span>创建于 {{ category.created_at|format_datetime }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>暂无分类</p>
+        <p><button type="button" class="btn btn-primary" onclick="showAddCategoryModal()">+ 添加第一个分类</button></p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Category Feeds Modal (hidden by default) -->
+<div id="category-feeds-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-dialog" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3 id="category-feeds-title">分类订阅源</h3>
+            <button type="button" class="modal-close" onclick="hideCategoryFeedsModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="category-feeds-body">
+            <!-- Content loaded dynamically -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+<script>
+    // Store category data for editing
+    window.categoryData = {{ categories|tojson|safe }};
+
+    // Initialize stats
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCategoryStats();
+    });
+
+    function updateCategoryStats() {
+        const categories = window.categoryData || [];
+        const total = categories.length;
+        const enabled = categories.filter(c => c.enabled).length;
+        const totalFeeds = categories.reduce((sum, c) => sum + (c.feed_count || 0), 0);
+
+        document.getElementById('total-categories').textContent = total;
+        document.getElementById('enabled-categories').textContent = enabled;
+        document.getElementById('total-feeds-in-categories').textContent = totalFeeds;
+    }
+</script>
+<script src="{{ url_for('static', filename='js/categories.js') }}"></script>
+{% endblock %}

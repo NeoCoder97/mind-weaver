@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Initialize the spider-aggregation database.
+Initialize the mind-weaver database.
 
 This script creates all necessary database tables.
 """
@@ -18,7 +18,7 @@ def main() -> None:
     """Initialize the database."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Initialize spider-aggregation database")
+    parser = argparse.ArgumentParser(description="Initialize mind-weaver database")
     parser.add_argument(
         "--drop", action="store_true", help="Drop existing tables before creating new ones"
     )

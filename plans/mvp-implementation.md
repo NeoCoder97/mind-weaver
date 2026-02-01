@@ -1,4 +1,4 @@
-# Spider-Aggregation 项目任务拆解方案
+# Mind-Aggregation 项目任务拆解方案
 
 ## 项目概述
 
@@ -28,7 +28,7 @@
 ## 推荐的目录结构
 
 ```
-spider-aggregation/
+mind-weaver/
 ├── README.md                          # 项目说明（已有）
 ├── pyproject.toml                     # 项目配置（需更新）
 ├── uv.lock                            # 依赖锁定（已有）
@@ -106,7 +106,7 @@ spider-aggregation/
 
 ```toml
 [project]
-name = "spider-aggregation"
+name = "mind-weaver"
 version = "0.1.0"
 description = "Personal knowledge/research dynamic monitoring tool"
 readme = "README.md"
@@ -133,7 +133,7 @@ dev = [
 ]
 
 [project.scripts]
-spider-aggregation = "spider_aggregation.cli:main"
+mind-weaver = "spider_aggregation.cli:main"
 ```
 
 ---
@@ -237,12 +237,12 @@ spider-aggregation = "spider_aggregation.cli:main"
 | ID | 任务 | 验收标准 |
 |----|------|----------|
 | 1.8.1 | 设计 CLI 命令结构 | 使用 Click 框架 |
-| 1.8.2 | `spider-aggregation init` | 初始化数据库 |
-| 1.8.3 | `spider-aggregation add-feed <url>` | 添加订阅源 |
-| 1.8.4 | `spider-aggregation list-feeds` | 列出订阅源 |
-| 1.8.5 | `spider-aggregation fetch` | 手动触发抓取 |
-| 1.8.6 | `spider-aggregation start` | 启动定时任务 |
-| 1.8.7 | `spider-aggregation list-entries` | 列出条目，支持过滤 |
+| 1.8.2 | `mind-weaver init` | 初始化数据库 |
+| 1.8.3 | `mind-weaver add-feed <url>` | 添加订阅源 |
+| 1.8.4 | `mind-weaver list-feeds` | 列出订阅源 |
+| 1.8.5 | `mind-weaver fetch` | 手动触发抓取 |
+| 1.8.6 | `mind-weaver start` | 启动定时任务 |
+| 1.8.7 | `mind-weaver list-entries` | 列出条目，支持过滤 |
 | 1.8.8 | 添加 Rich 终端美化 | 表格、进度条 |
 
 ### PHASE 1.9: 集成与端到端测试 (2-3h)

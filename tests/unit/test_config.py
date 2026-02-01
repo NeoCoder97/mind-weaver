@@ -90,7 +90,7 @@ class TestFetcherConfig:
     def test_user_agent(self):
         """Test user agent configuration."""
         config = FetcherConfig()
-        assert "Spider-Aggregation" in config.user_agent
+        assert "Mind-Aggregation" in config.user_agent
 
     def test_validation(self):
         """Test configuration validation."""
@@ -180,7 +180,7 @@ class TestConfig:
     def test_default_values(self):
         """Test default configuration."""
         config = Config()
-        assert config.app_name == "Spider Aggregation"
+        assert config.app_name == "MindWeaver"
         assert config.debug is False
         assert isinstance(config.database, DatabaseConfig)
         assert isinstance(config.scheduler, SchedulerConfig)
@@ -206,8 +206,8 @@ class TestConfig:
 
     def test_env_prefix(self, monkeypatch):
         """Test environment variable prefix."""
-        monkeypatch.setenv("SPIDER_DEBUG", "true")
-        monkeypatch.setenv("SPIDER_APP_NAME", "Test App")
+        monkeypatch.setenv("MIND_DEBUG", "true")
+        monkeypatch.setenv("MIND_APP_NAME", "Test App")
         config = Config()
         assert config.debug is True
         assert config.app_name == "Test App"
@@ -281,7 +281,7 @@ class TestYamlConfigLoading:
         with config_yaml.open("w") as f:
             yaml.dump(test_config, f)
 
-        monkeypatch.setenv("SPIDER_DEBUG", "true")
+        monkeypatch.setenv("MIND_DEBUG", "true")
 
         config = load_config_from_yaml(str(config_yaml))
         # YAML values override environment variables for main config
@@ -304,7 +304,7 @@ class TestConfigIntegration:
         """Test loading a complete configuration file."""
         config_yaml = tmp_path / "full_config.yaml"
         full_config = {
-            "app_name": "Spider Aggregation Test",
+            "app_name": "MindWeaver Test",
             "debug": True,
             "verbose": True,
             "database": {
@@ -347,7 +347,7 @@ class TestConfigIntegration:
         config = load_config_from_yaml(str(config_yaml))
 
         # Verify all sections
-        assert config.app_name == "Spider Aggregation Test"
+        assert config.app_name == "MindWeaver Test"
         assert config.debug is True
         assert config.database.path == "data/test.db"
         assert config.database.pool_size == 10

@@ -1,8 +1,8 @@
-# Spider Aggregation - 架构设计文档
+# MindWeaver - 架构设计文档
 
 ## 项目概述
 
-Spider Aggregation 是一个个人知识/研究动态监测工具，用于自动化抓取、解析、去重和存储 RSS/Atom 订阅源内容。
+MindWeaver 是一个个人知识/研究动态监测工具，用于自动化抓取、解析、去重和存储 RSS/Atom 订阅源内容。
 
 ### 核心目标
 
@@ -253,7 +253,7 @@ class FetcherConfig:
     max_retries: int = 3
     retry_delay_seconds: int = 5
     max_content_length: int = 10000
-    user_agent: str = "Spider-Aggregation/0.1.0"
+    user_agent: str = "Mind-Aggregation/0.1.0"
 
 class SchedulerConfig:
     min_interval_minutes: int = 15
@@ -266,7 +266,7 @@ class DeduplicatorConfig:
 
 ### 配置优先级
 
-1. 环境变量 (`SPIDER_***`)
+1. 环境变量 (`MIND_***`)
 2. 配置文件 (`config/config.yaml`)
 3. 默认值
 

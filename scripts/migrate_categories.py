@@ -54,7 +54,8 @@ def migrate_categories(db_path: str) -> bool:
     manager = DatabaseManager(db_path)
 
     try:
-        from spider_aggregation.models.category import CategoryModel, feed_categories
+        from spider_aggregation.models.category import CategoryModel
+        from spider_aggregation.models.feed import feed_categories
 
         logger.info("Creating categories and feed_categories tables...")
         CategoryModel.metadata.create_all(
@@ -211,7 +212,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Migrate spider-aggregation database for categories feature"
+        description="Migrate mind-weaver database for categories feature"
     )
     parser.add_argument(
         "--db-path",

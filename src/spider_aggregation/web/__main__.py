@@ -1,5 +1,5 @@
 """
-Main entry point for spider-aggregation web application.
+Main entry point for mind-weaver web application.
 """
 
 from spider_aggregation.web.app import create_app
@@ -14,7 +14,7 @@ def main():
     print(f"""
 ╔══════════════════════════════════════════════════════════════╗
 ║                                                              ║
-║           Spider Aggregation v{config.version or "0.3.0"}                    ║
+║           MindWeaver v{config.version or "0.3.0"}                    ║
 ║                                                              ║
 ║   Web UI: http://{config.web.host}:{config.web.port}              ║
 ║                                                              ║

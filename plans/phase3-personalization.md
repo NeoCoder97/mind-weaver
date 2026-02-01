@@ -304,7 +304,7 @@ else:
 ## 目录结构扩展
 
 ```
-spider-aggregation/
+mind-weaver/
 ├── src/spider_aggregation/
 │   ├── analytics/              # 🆕 行为分析
 │   │   ├── __init__.py

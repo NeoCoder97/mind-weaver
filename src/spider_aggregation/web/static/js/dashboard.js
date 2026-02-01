@@ -1,4 +1,4 @@
-// Spider Aggregation - Dashboard JavaScript
+// MindWeaver - Dashboard JavaScript
 
 // Chart instance
 let languageChart = null;

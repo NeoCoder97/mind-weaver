@@ -1,4 +1,4 @@
-# Spider Aggregation Configuration
+# MindWeaver Configuration
 # This is the default configuration file
 
 database:
@@ -19,7 +19,7 @@ fetcher:
   max_content_length: 10000
 
   # User agent string for HTTP requests
-  user_agent: "Spider-Aggregation/0.1.0"
+  user_agent: "Mind-Aggregation/0.1.0"
 
 scheduler:
   # Minimum interval between feed fetches (in minutes)

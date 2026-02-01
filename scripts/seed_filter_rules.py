@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Seed common filter rules for spider-aggregation.
+Seed common filter rules for mind-weaver.
 
 This script adds useful default filter rules to help filter out:
 - Advertisements and sponsored content
@@ -215,7 +215,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Seed default filter rules for spider-aggregation"
+        description="Seed default filter rules for mind-weaver"
     )
     parser.add_argument(
         "--db-path",

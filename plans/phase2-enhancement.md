@@ -241,7 +241,7 @@ GET    /api/stats/trends       # 趋势数据
 ## 目录结构扩展
 
 ```
-spider-aggregation/
+mind-weaver/
 ├── src/spider_aggregation/
 │   ├── nlp/                    # 🆕 NLP 模块
 │   │   ├── __init__.py

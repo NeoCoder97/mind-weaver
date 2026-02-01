@@ -1,5 +1,5 @@
 #!/bin/bash
-# Spider Aggregation Deployment Script
+# MindWeaver Deployment Script
 # This script helps with deployment and setup tasks
 
 set -e  # Exit on error
@@ -90,7 +90,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --help|-h)
-            echo "Spider Aggregation Deployment Script"
+            echo "MindWeaver Deployment Script"
             echo ""
             echo "Usage: $0 [COMMAND] [OPTIONS]"
             echo ""
@@ -154,7 +154,7 @@ init_database() {
     mkdir -p "$LOG_DIR"
 
     # Initialize database
-    uv run spider-aggregation init
+    uv run mind-weaver init
 
     print_success "Database initialized at: $DB_PATH"
 }
@@ -177,13 +177,13 @@ start_scheduler() {
 
     # Start scheduler in background
     if [ "$ENVIRONMENT" = "production" ]; then
-        nohup uv run spider-aggregation start >> "$LOG_DIR/scheduler.log" 2>&1 &
+        nohup uv run mind-weaver start >> "$LOG_DIR/scheduler.log" 2>&1 &
         echo $! > data/scheduler.pid
         print_success "Scheduler started in production mode (PID: $!)"
     else
         print_warning "Starting in foreground (use Ctrl+C to stop)"
         print_info "Use --production for background mode"
-        uv run spider-aggregation start
+        uv run mind-weaver start
     fi
 }
 
@@ -282,7 +282,7 @@ restore_database() {
 
 # Show status
 show_status() {
-    print_info "Spider Aggregation Status"
+    print_info "MindWeaver Status"
     echo ""
 
     # Check if scheduler is running

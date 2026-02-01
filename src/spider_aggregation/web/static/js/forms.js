@@ -1,4 +1,4 @@
-// Spider Aggregation - Form Handling JavaScript
+// MindWeaver - Form Handling JavaScript
 
 // ============================================================================
 // Feed Form Handling

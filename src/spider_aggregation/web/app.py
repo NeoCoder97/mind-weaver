@@ -1,5 +1,5 @@
 """
-Flask application for spider-aggregation web UI.
+Flask application for mind-weaver web UI.
 """
 
 import json
@@ -10,6 +10,7 @@ from typing import Optional, Any
 
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from markupsafe import Markup
+from sqlalchemy import func
 
 from spider_aggregation.config import get_config
 from spider_aggregation.logger import get_logger
@@ -70,6 +71,7 @@ def feed_to_dict(feed) -> dict:
         "fetch_error_count": feed.fetch_error_count,
         "last_error": feed.last_error,
         "last_error_at": feed.last_error_at.isoformat() if feed.last_error_at else None,
+        "categories": [category_to_dict(c) for c in feed.categories] if feed.categories else [],
     }
 
 
@@ -117,6 +119,29 @@ def filter_rule_to_dict(rule) -> dict:
         "priority": rule.priority,
         "created_at": rule.created_at.isoformat() if rule.created_at else None,
         "updated_at": rule.updated_at.isoformat() if rule.updated_at else None,
+    }
+
+
+def category_to_dict(category, feed_count: int = None) -> dict:
+    """Convert Category model to dictionary.
+
+    Args:
+        category: CategoryModel instance
+        feed_count: Optional feed count (to avoid lazy loading)
+
+    Returns:
+        Dictionary representation
+    """
+    return {
+        "id": category.id,
+        "name": category.name,
+        "description": category.description,
+        "color": category.color,
+        "icon": category.icon,
+        "enabled": category.enabled,
+        "created_at": category.created_at.isoformat() if category.created_at else None,
+        "updated_at": category.updated_at.isoformat() if category.updated_at else None,
+        "feed_count": feed_count if feed_count is not None else 0,
     }
 
 
@@ -315,6 +340,21 @@ def create_app(
             rules_data = [filter_rule_to_dict(r) for r in rules]
 
         return render_template("filter_rules.html", rules=rules_data)
+
+    @app.route("/categories")
+    def categories():
+        """Categories management page."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+            categories = cat_repo.list()
+            # Convert to dicts for JSON serialization in template
+            categories_data = [category_to_dict(c) for c in categories]
+
+        return render_template("categories.html", categories=categories_data)
 
     @app.route("/settings")
     def settings():
@@ -870,6 +910,520 @@ def create_app(
             message = "规则已启用" if rule.enabled else "规则已禁用"
 
         return api_response(success=True, data=filter_rule_to_dict(rule), message=message)
+
+    # ========================================================================
+    # Category Management APIs
+    # ========================================================================
+
+    @app.route("/api/categories", methods=["GET"])
+    def api_categories_list():
+        """Get list of all categories."""
+        enabled_only = request.args.get("enabled_only", False, type=bool)
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+            categories = cat_repo.list(enabled_only=enabled_only)
+
+            # Convert to dict inside session to avoid DetachedInstanceError
+            data = [category_to_dict(c) for c in categories]
+
+        return api_response(success=True, data=data)
+
+    @app.route("/api/categories/<int:category_id>", methods=["GET"])
+    def api_category_detail(category_id: int):
+        """Get category details."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+            category = cat_repo.get_by_id(category_id)
+
+            if not category:
+                return api_response(success=False, error="未找到分类", status=404)
+
+            # Convert to dict inside session to avoid DetachedInstanceError
+            data = category_to_dict(category)
+
+        return api_response(success=True, data=data)
+
+    @app.route("/api/categories", methods=["POST"])
+    def api_category_create():
+        """Create a new category."""
+        data = request.get_json()
+
+        if not data or not data.get("name"):
+            return api_response(success=False, error="分类名称为必填项", status=400)
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+
+            # Check if name already exists
+            if cat_repo.get_by_name(data["name"]):
+                return api_response(success=False, error="分类名称已存在", status=400)
+
+            try:
+                category = cat_repo.create(
+                    name=data["name"],
+                    description=data.get("description"),
+                    color=data.get("color"),
+                    icon=data.get("icon"),
+                    enabled=data.get("enabled", True),
+                )
+                return api_response(
+                    success=True,
+                    data=category_to_dict(category),
+                    message="分类创建成功",
+                )
+            except Exception as e:
+                logger.error(f"Error creating category: {e}")
+                return api_response(success=False, error=str(e), status=400)
+
+    @app.route("/api/categories/<int:category_id>", methods=["PUT", "POST"])
+    def api_category_update(category_id: int):
+        """Update a category."""
+        data = request.get_json()
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+            category = cat_repo.get_by_id(category_id)
+
+            if not category:
+                return api_response(success=False, error="未找到分类", status=404)
+
+            try:
+                # Build update kwargs from provided fields
+                update_kwargs = {}
+                if "name" in data:
+                    update_kwargs["name"] = data["name"]
+                if "description" in data:
+                    update_kwargs["description"] = data["description"]
+                if "color" in data:
+                    update_kwargs["color"] = data["color"]
+                if "icon" in data:
+                    update_kwargs["icon"] = data["icon"]
+                if "enabled" in data:
+                    update_kwargs["enabled"] = data["enabled"]
+
+                updated_category = cat_repo.update(category, **update_kwargs)
+                return api_response(
+                    success=True,
+                    data=category_to_dict(updated_category),
+                    message="分类更新成功",
+                )
+            except Exception as e:
+                logger.error(f"Error updating category: {e}")
+                return api_response(success=False, error=str(e), status=400)
+
+    @app.route("/api/categories/<int:category_id>", methods=["DELETE"])
+    def api_category_delete(category_id: int):
+        """Delete a category."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+            category = cat_repo.get_by_id(category_id)
+
+            if not category:
+                return api_response(success=False, error="未找到分类", status=404)
+
+            cat_repo.delete(category)
+
+        return api_response(success=True, message="分类删除成功")
+
+    @app.route("/api/categories/<int:category_id>/toggle", methods=["PATCH", "POST"])
+    def api_category_toggle(category_id: int):
+        """Toggle category enabled status."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+            category = cat_repo.get_by_id(category_id)
+
+            if not category:
+                return api_response(success=False, error="未找到分类", status=404)
+
+            # Toggle enabled status
+            new_status = not category.enabled
+            cat_repo.update(category, enabled=new_status)
+
+            # Refresh to get updated state
+            session.refresh(category)
+
+            message = "分类已启用" if new_status else "分类已禁用"
+
+            # Convert to dict inside session to avoid DetachedInstanceError
+            data = category_to_dict(category)
+
+        return api_response(success=True, data=data, message=message)
+
+    @app.route("/api/categories/<int:category_id>/feeds", methods=["GET"])
+    def api_category_feeds(category_id: int):
+        """Get feeds in a category."""
+        enabled_only = request.args.get("enabled_only", False, type=bool)
+        limit = request.args.get("limit", 100, type=int)
+        offset = request.args.get("offset", 0, type=int)
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+            category = cat_repo.get_by_id(category_id)
+
+            if not category:
+                return api_response(success=False, error="未找到分类", status=404)
+
+            feeds = cat_repo.get_feeds_by_category(
+                category_id, enabled_only=enabled_only, limit=limit, offset=offset
+            )
+            total = cat_repo.get_feed_count_by_category(category_id, enabled_only=enabled_only)
+
+            # Convert to dict inside session to avoid DetachedInstanceError
+            data = [feed_to_dict(f) for f in feeds]
+
+        return api_response(
+            success=True,
+            data={"feeds": data, "total": total, "limit": limit, "offset": offset},
+        )
+
+    @app.route("/api/categories/stats", methods=["GET"])
+    def api_categories_stats():
+        """Get category statistics."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            cat_repo = CategoryRepository(session)
+
+            stats = {
+                "total": cat_repo.count(),
+                "enabled": cat_repo.count(enabled_only=True),
+            }
+
+        return api_response(success=True, data=stats)
+
+    # ========================================================================
+    # Feed-Category Relationship APIs
+    # ========================================================================
+
+    @app.route("/api/feeds/<int:feed_id>/categories", methods=["GET"])
+    def api_feed_categories(feed_id: int):
+        """Get categories for a feed."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+
+            feed_repo = FeedRepository(session)
+            feed = feed_repo.get_by_id(feed_id)
+
+            if not feed:
+                return api_response(success=False, error="未找到订阅源", status=404)
+
+            categories = feed_repo.get_categories(feed)
+
+            # Convert to dict inside session to avoid DetachedInstanceError
+            data = [category_to_dict(c) for c in categories]
+
+        return api_response(success=True, data=data)
+
+    @app.route("/api/feeds/<int:feed_id>/categories", methods=["PUT", "POST"])
+    def api_feed_set_categories(feed_id: int):
+        """Set categories for a feed (replaces existing categories)."""
+        data = request.get_json()
+        category_ids = data.get("category_ids", [])
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+            from spider_aggregation.models import CategoryModel, feed_categories
+
+            feed_repo = FeedRepository(session)
+            cat_repo = CategoryRepository(session)
+            feed = feed_repo.get_by_id(feed_id)
+
+            if not feed:
+                return api_response(success=False, error="未找到订阅源", status=404)
+
+            try:
+                feed_repo.set_categories(feed, category_ids)
+
+                # Query individual columns instead of ORM objects to avoid DetachedInstanceError
+                category_rows = (
+                    session.query(
+                        CategoryModel.id,
+                        CategoryModel.name,
+                        CategoryModel.description,
+                        CategoryModel.color,
+                        CategoryModel.icon,
+                        CategoryModel.enabled,
+                        CategoryModel.created_at,
+                        CategoryModel.updated_at,
+                        func.count(feed_categories.c.feed_id).label('feed_count')
+                    )
+                    .join(feed_categories, CategoryModel.id == feed_categories.c.category_id)
+                    .filter(feed_categories.c.feed_id == feed_id)
+                    .group_by(
+                        CategoryModel.id,
+                        CategoryModel.name,
+                        CategoryModel.description,
+                        CategoryModel.color,
+                        CategoryModel.icon,
+                        CategoryModel.enabled,
+                        CategoryModel.created_at,
+                        CategoryModel.updated_at,
+                    )
+                    .all()
+                )
+
+                # Convert raw row data to dict
+                data = []
+                for row in category_rows:
+                    data.append({
+                        "id": row.id,
+                        "name": row.name,
+                        "description": row.description,
+                        "color": row.color,
+                        "icon": row.icon,
+                        "enabled": row.enabled,
+                        "created_at": row.created_at.isoformat() if row.created_at else None,
+                        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                        "feed_count": row.feed_count,
+                    })
+
+                return api_response(
+                    success=True,
+                    data=data,
+                    message=f"已设置 {len(data)} 个分类",
+                )
+            except Exception as e:
+                logger.error(f"Error setting feed categories: {e}")
+                import traceback
+                traceback.print_exc()
+                return api_response(success=False, error=str(e), status=400)
+
+    @app.route("/api/feeds/<int:feed_id>/categories/<int:category_id>", methods=["PUT", "POST"])
+    def api_feed_add_category(feed_id: int, category_id: int):
+        """Add a category to a feed."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            feed_repo = FeedRepository(session)
+            cat_repo = CategoryRepository(session)
+
+            feed = feed_repo.get_by_id(feed_id)
+            category = cat_repo.get_by_id(category_id)
+
+            if not feed:
+                return api_response(success=False, error="未找到订阅源", status=404)
+            if not category:
+                return api_response(success=False, error="未找到分类", status=404)
+
+            try:
+                feed_repo.add_category(feed, category)
+                categories = feed_repo.get_categories(feed)
+
+                # Convert to dict inside session to avoid DetachedInstanceError
+                data = [category_to_dict(c) for c in categories]
+
+                return api_response(
+                    success=True,
+                    data=data,
+                    message="分类添加成功",
+                )
+            except Exception as e:
+                logger.error(f"Error adding category to feed: {e}")
+                return api_response(success=False, error=str(e), status=400)
+
+    @app.route("/api/feeds/<int:feed_id>/categories/<int:category_id>", methods=["DELETE"])
+    def api_feed_remove_category(feed_id: int, category_id: int):
+        """Remove a category from a feed."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+            from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+            feed_repo = FeedRepository(session)
+            cat_repo = CategoryRepository(session)
+
+            feed = feed_repo.get_by_id(feed_id)
+            category = cat_repo.get_by_id(category_id)
+
+            if not feed:
+                return api_response(success=False, error="未找到订阅源", status=404)
+            if not category:
+                return api_response(success=False, error="未找到分类", status=404)
+
+            try:
+                feed_repo.remove_category(feed, category)
+                categories = feed_repo.get_categories(feed)
+
+                # Convert to dict inside session to avoid DetachedInstanceError
+                data = [category_to_dict(c) for c in categories]
+
+                return api_response(
+                    success=True,
+                    data=data,
+                    message="分类移除成功",
+                )
+            except Exception as e:
+                logger.error(f"Error removing category from feed: {e}")
+                return api_response(success=False, error=str(e), status=400)
+
+    # ========================================================================
+    # Entry-Category Filtering APIs
+    # ========================================================================
+
+    @app.route("/api/entries/by-category/<int:category_id>", methods=["GET"])
+    def api_entries_by_category(category_id: int):
+        """Get entries by category ID."""
+        limit = request.args.get("limit", 20, type=int)
+        offset = request.args.get("offset", 0, type=int)
+        order_by = request.args.get("order_by", "published_at", type=str)
+        order_desc = request.args.get("order_desc", True, type=bool)
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.entry_repo import EntryRepository
+
+            entry_repo = EntryRepository(session)
+            entries = entry_repo.list_by_category(
+                category_id=category_id,
+                limit=limit,
+                offset=offset,
+                order_by=order_by,
+                order_desc=order_desc,
+            )
+            total = entry_repo.count_by_category(category_id)
+
+            # Parse tags and expunge entries from session
+            for entry in entries:
+                if entry.tags:
+                    try:
+                        entry.tags_list = json.loads(entry.tags)
+                    except (json.JSONDecodeError, TypeError):
+                        entry.tags_list = []
+                else:
+                    entry.tags_list = []
+                session.expunge(entry)
+
+        return api_response(
+            success=True,
+            data={"entries": [entry_to_dict(e) for e in entries], "total": total},
+        )
+
+    @app.route("/api/entries/by-category-name/<category_name>", methods=["GET"])
+    def api_entries_by_category_name(category_name: str):
+        """Get entries by category name."""
+        limit = request.args.get("limit", 20, type=int)
+        offset = request.args.get("offset", 0, type=int)
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.entry_repo import EntryRepository
+
+            entry_repo = EntryRepository(session)
+            entries = entry_repo.list_by_category_name(
+                category_name=category_name,
+                limit=limit,
+                offset=offset,
+            )
+
+            # Parse tags and expunge entries from session
+            for entry in entries:
+                if entry.tags:
+                    try:
+                        entry.tags_list = json.loads(entry.tags)
+                    except (json.JSONDecodeError, TypeError):
+                        entry.tags_list = []
+                else:
+                    entry.tags_list = []
+                session.expunge(entry)
+
+        return api_response(
+            success=True,
+            data={"entries": [entry_to_dict(e) for e in entries]},
+        )
+
+    @app.route("/api/entries/search-by-category/<int:category_id>", methods=["GET"])
+    def api_entries_search_by_category(category_id: int):
+        """Search entries within a category."""
+        query = request.args.get("q", "")
+        limit = request.args.get("limit", 20, type=int)
+        offset = request.args.get("offset", 0, type=int)
+
+        if not query:
+            return api_response(success=False, error="请提供搜索关键词", status=400)
+
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.entry_repo import EntryRepository
+
+            entry_repo = EntryRepository(session)
+            entries = entry_repo.search_by_category(
+                query=query,
+                category_id=category_id,
+                limit=limit,
+                offset=offset,
+            )
+
+            # Parse tags and expunge entries from session
+            for entry in entries:
+                if entry.tags:
+                    try:
+                        entry.tags_list = json.loads(entry.tags)
+                    except (json.JSONDecodeError, TypeError):
+                        entry.tags_list = []
+                else:
+                    entry.tags_list = []
+                session.expunge(entry)
+
+        return api_response(
+            success=True,
+            data={"entries": [entry_to_dict(e) for e in entries], "query": query},
+        )
+
+    @app.route("/api/categories/<int:category_id>/entries/stats", methods=["GET"])
+    def api_category_entries_stats(category_id: int):
+        """Get entry statistics for a category."""
+        db_manager = DatabaseManager(db_path)
+
+        with db_manager.session() as session:
+            from spider_aggregation.storage.repositories.entry_repo import EntryRepository
+
+            entry_repo = EntryRepository(session)
+            stats = entry_repo.get_stats_by_category(category_id)
+
+        return api_response(success=True, data=stats)
 
     # ========================================================================
     # Dashboard & Statistics APIs

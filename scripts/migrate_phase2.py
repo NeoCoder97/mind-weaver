@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Migration script for Phase 2 of spider-aggregation.
+Migration script for Phase 2 of mind-weaver.
 
 This script adds new fields to the entries table and creates the filter_rules table.
 Supports rollback to Phase 1.
@@ -145,7 +145,7 @@ def main() -> None:
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Migrate spider-aggregation database to Phase 2"
+        description="Migrate mind-weaver database to Phase 2"
     )
     parser.add_argument(
         "--db-path",

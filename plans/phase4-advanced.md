@@ -439,7 +439,7 @@ class ReportGenerator:
 ## 目录结构扩展
 
 ```
-spider-aggregation/
+mind-weaver/
 ├── src/spider_aggregation/
 │   ├── sources/                # 🆕 多源采集
 │   │   ├── __init__.py

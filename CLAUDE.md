@@ -4,21 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Spider Aggregation is a personal knowledge/research dynamic monitoring tool that automatically fetches, deduplicates, stores, and retrieves RSS/Atom feed content. Built with Python 3.14+, Flask, SQLite, and SQLAlchemy.
+MindWeaver is a personal knowledge/research dynamic monitoring tool that automatically fetches, deduplicates, stores, and retrieves RSS/Atom feed content. Built with Python 3.14+, Flask, SQLite, and SQLAlchemy.
 
-**Current Status:** Phase 2 complete (Web interface, content extraction, keyword extraction, filtering). Phase 3-4 planned.
+**Current Status:** Phase 4 complete (Category management with full UI, API, and database support).
 
 ## Common Commands
 
 ### Running the Application
 ```bash
 # Start web application (primary interface)
-uv run spider-aggregation
+uv run mind-weaver
 
 # With custom host/port
-export SPIDER_WEB_HOST=0.0.0.0
-export SPIDER_WEB_PORT=8000
-uv run spider-aggregation
+export MIND_WEB_HOST=0.0.0.0
+export MIND_WEB_PORT=8000
+uv run mind-weaver
 ```
 
 ### Development
@@ -85,7 +85,7 @@ Storage Layer (SQLite + SQLAlchemy ORM)
 
 **Web Layer (`src/spider_aggregation/web/`):**
 - `app.py` - Flask application with REST API endpoints
-- `__main__.py` - Entry point for `spider-aggregation` command
+- `__main__.py` - Entry point for `mind-weaver` command
 - `templates/` - Jinja2 HTML templates (dashboard, feeds, entries, filter_rules, settings)
 
 ### Data Flow
@@ -99,12 +99,12 @@ Scheduler triggers → Fetcher.fetch_feed() → Parser.parse_entry()
 
 ## Configuration
 
-Configuration priority: Environment variables (`SPIDER_*`) > `config/config.yaml` > defaults.
+Configuration priority: Environment variables (`MIND_*`) > `config/config.yaml` > defaults.
 
 Key environment variables:
-- `SPIDER_WEB_HOST` - Web server host (default: 127.0.0.1)
-- `SPIDER_WEB_PORT` - Web server port (default: 8000)
-- `SPIDER_DB_PATH` - Database file path (default: data/spider_aggregation.db)
+- `MIND_WEB_HOST` - Web server host (default: 127.0.0.1)
+- `MIND_WEB_PORT` - Web server port (default: 8000)
+- `MIND_DB_PATH` - Database file path (default: data/spider_aggregation.db)
 
 ## Code Standards
 

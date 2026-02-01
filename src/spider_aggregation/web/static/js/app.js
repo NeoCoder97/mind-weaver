@@ -1,4 +1,4 @@
-// Spider Aggregation - Web UI JavaScript
+// MindWeaver - Web UI JavaScript
 
 // ============================================================================
 // App Namespace
@@ -327,7 +327,7 @@ App.debounce = function(func, wait) {
 // ============================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Spider Aggregation Web UI loaded');
+    console.log('MindWeaver Web UI loaded');
 
     // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {

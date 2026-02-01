@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}订阅源 - Spider Aggregation{% endblock %}
+{% block title %}订阅源 - MindWeaver{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -21,6 +21,7 @@
                 </span>
                 <div class="btn-group">
                     <button type="button" class="btn-icon" onclick="showEditFeedModal({{ feed.id }})" title="编辑">✏️</button>
+                    <button type="button" class="btn-icon" onclick="showFeedCategoriesModal({{ feed.id }}, '{{ (feed.name or feed.url)|e }}')" title="分类">📁</button>
                     <button type="button" class="btn-icon" onclick="toggleFeed({{ feed.id }})" title="{{ '禁用' if feed.enabled else '启用' }}">
                         {{ '⏸️' if feed.enabled else '▶️' }}
                     </button>
@@ -49,6 +50,18 @@
             <span class="error-text">{{ feed.last_error }}</span>
         </div>
         {% endif %}
+        {% if feed.categories %}
+        <div class="feed-categories">
+            {% for category in feed.categories %}
+            <a href="{{ url_for('categories') }}" class="feed-category-badge" title="{{ category.name }}">
+                <span class="category-icon-small" style="background-color: {{ category.color or '#64748b' }};">
+                    {{ category.icon or '📁' }}
+                </span>
+                {{ category.name }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
     {% else %}
     <div class="empty-state">
@@ -64,5 +77,20 @@
 <script>
     // Store feed data for editing
     window.feedData = {{ feeds|tojson|safe }};
+
+    // Load categories data for category management
+    (async function() {
+        try {
+            const response = await fetch('/api/categories');
+            const data = await response.json();
+            if (data.success) {
+                window.categoryData = data.data;
+            }
+        } catch (error) {
+            console.error('Failed to load categories:', error);
+            window.categoryData = [];
+        }
+    })();
 </script>
+<script src="{{ url_for('static', filename='js/categories.js') }}"></script>
 {% endblock %}

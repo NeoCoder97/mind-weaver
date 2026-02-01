@@ -1,4 +1,4 @@
-# Spider Aggregation - API 参考文档
+# MindWeaver - API 参考文档
 
 ## 目录
 
@@ -14,7 +14,7 @@
 ### 命令行工具入口点
 
 ```bash
-spider-aggregation [OPTIONS] COMMAND [ARGS]...
+mind-weaver [OPTIONS] COMMAND [ARGS]...
 ```
 
 ### 全局选项
@@ -33,13 +33,13 @@ spider-aggregation [OPTIONS] COMMAND [ARGS]...
 初始化数据库。
 
 ```bash
-spider-aggregation init
+mind-weaver init
 ```
 
 **示例**：
 ```bash
-$ spider-aggregation init
-Initializing Spider Aggregation database...
+$ mind-weaver init
+Initializing MindWeaver database...
 ✅ Database initialized at: data/spider_aggregation.db
 ```
 
@@ -50,7 +50,7 @@ Initializing Spider Aggregation database...
 添加新的 RSS/Atom 订阅源。
 
 ```bash
-spider-aggregation add-feed URL [OPTIONS]
+mind-weaver add-feed URL [OPTIONS]
 ```
 
 | 参数/选项 | 描述 |
@@ -64,10 +64,10 @@ spider-aggregation add-feed URL [OPTIONS]
 **示例**：
 ```bash
 # 自动检测元数据
-spider-aggregation add-feed https://blog.cloudflare.com/zh-cn/rss
+mind-weaver add-feed https://blog.cloudflare.com/zh-cn/rss
 
 # 指定名称和间隔
-spider-aggregation add-feed https://example.com/feed.xml --name "My Feed" --interval 120
+mind-weaver add-feed https://example.com/feed.xml --name "My Feed" --interval 120
 ```
 
 ---
@@ -77,7 +77,7 @@ spider-aggregation add-feed https://example.com/feed.xml --name "My Feed" --inte
 列出所有订阅源。
 
 ```bash
-spider-aggregation list-feeds [OPTIONS]
+mind-weaver list-feeds [OPTIONS]
 ```
 
 | 选项 | 描述 |
@@ -87,7 +87,7 @@ spider-aggregation list-feeds [OPTIONS]
 
 **示例**：
 ```bash
-$ spider-aggregation list-feeds --verbose
+$ mind-weaver list-feeds --verbose
 ```
 
 输出：
@@ -106,7 +106,7 @@ $ spider-aggregation list-feeds --verbose
 手动触发订阅源抓取。
 
 ```bash
-spider-aggregation fetch [FEED_ID] [OPTIONS]
+mind-weaver fetch [FEED_ID] [OPTIONS]
 ```
 
 | 参数/选项 | 描述 |
@@ -118,10 +118,10 @@ spider-aggregation fetch [FEED_ID] [OPTIONS]
 **示例**：
 ```bash
 # 抓取所有启用的订阅源
-spider-aggregation fetch --all
+mind-weaver fetch --all
 
 # 抓取指定订阅源
-spider-aggregation fetch 1
+mind-weaver fetch 1
 ```
 
 ---
@@ -131,7 +131,7 @@ spider-aggregation fetch 1
 启动调度器进行自动抓取。
 
 ```bash
-spider-aggregation start [OPTIONS]
+mind-weaver start [OPTIONS]
 ```
 
 | 选项 | 描述 |
@@ -140,7 +140,7 @@ spider-aggregation start [OPTIONS]
 
 **示例**：
 ```bash
-$ spider-aggregation start --workers 5
+$ mind-weaver start --workers 5
 ```
 
 按 `Ctrl+C` 停止调度器。
@@ -152,7 +152,7 @@ $ spider-aggregation start --workers 5
 列出数据库中的条目。
 
 ```bash
-spider-aggregation list-entries [OPTIONS]
+mind-weaver list-entries [OPTIONS]
 ```
 
 | 选项 | 描述 |
@@ -166,10 +166,10 @@ spider-aggregation list-entries [OPTIONS]
 **示例**：
 ```bash
 # 显示最近 10 条中文条目
-spider-aggregation list-entries --limit 10 --language zh
+mind-weaver list-entries --limit 10 --language zh
 
 # 搜索包含 "Python" 的条目
-spider-aggregation list-entries --search Python
+mind-weaver list-entries --search Python
 ```
 
 ---
@@ -179,7 +179,7 @@ spider-aggregation list-entries --search Python
 启用或禁用订阅源。
 
 ```bash
-spider-aggregation enable-feed FEED_ID [OPTIONS]
+mind-weaver enable-feed FEED_ID [OPTIONS]
 ```
 
 | 参数/选项 | 描述 |
@@ -190,10 +190,10 @@ spider-aggregation enable-feed FEED_ID [OPTIONS]
 **示例**：
 ```bash
 # 禁用订阅源
-spider-aggregation enable-feed 1 --disable
+mind-weaver enable-feed 1 --disable
 
 # 启用订阅源
-spider-aggregation enable-feed 1 --enable
+mind-weaver enable-feed 1 --enable
 ```
 
 ---
@@ -203,7 +203,7 @@ spider-aggregation enable-feed 1 --enable
 删除订阅源及其所有条目。
 
 ```bash
-spider-aggregation delete-feed FEED_ID
+mind-weaver delete-feed FEED_ID
 ```
 
 | 参数 | 描述 |
@@ -212,7 +212,7 @@ spider-aggregation delete-feed FEED_ID
 
 **示例**：
 ```bash
-$ spider-aggregation delete-feed 1
+$ mind-weaver delete-feed 1
 Deleting feed 'The Cloudflare Blog' and 20 entries...
 ✅ Feed deleted
 ```
@@ -224,7 +224,7 @@ Deleting feed 'The Cloudflare Blog' and 20 entries...
 清理旧条目。
 
 ```bash
-spider-aggregation cleanup [OPTIONS]
+mind-weaver cleanup [OPTIONS]
 ```
 
 | 选项 | 描述 |
@@ -234,7 +234,7 @@ spider-aggregation cleanup [OPTIONS]
 **示例**：
 ```bash
 # 清理 90 天前的条目
-spider-aggregation cleanup --days 90
+mind-weaver cleanup --days 90
 ```
 
 ---

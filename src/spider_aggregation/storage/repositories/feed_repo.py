@@ -412,7 +412,8 @@ class FeedRepository:
         feed.categories = categories
         feed.updated_at = datetime.utcnow()
         self.session.flush()
-        self.session.refresh(feed)
+        # Don't refresh to avoid DetachedInstanceError
+        # The categories relationship is already set
         return feed
 
     def add_category(self, feed: FeedModel, category: CategoryModel) -> None:

@@ -1,5 +1,5 @@
 """
-Configuration management for spider aggregation.
+Configuration management for MindWeaver.
 
 Uses Pydantic for validation and pydantic-settings for environment variable support.
 """
@@ -62,7 +62,7 @@ class FetcherConfig(BaseSettings):
     # HTTP settings
     timeout_seconds: int = Field(default=30, ge=1, le=300, description="Request timeout")
     user_agent: str = Field(
-        default="Spider-Aggregation/0.1.0 (+https://github.com/spider-aggregation)",
+        default="Mind-Aggregation/0.1.0 (+https://github.com/mind-weaver)",
         description="User-Agent header"
     )
 
@@ -194,7 +194,7 @@ class ContentFetcherConfig(BaseSettings):
         description="Maximum content length in bytes"
     )
     user_agent: str = Field(
-        default="Spider-Aggregation/0.2.0 (+https://github.com/spider-aggregation)",
+        default="Mind-Aggregation/0.2.0 (+https://github.com/mind-weaver)",
         description="User-Agent header"
     )
 
@@ -241,13 +241,13 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
-        env_prefix="SPIDER_",
+        env_prefix="MIND_",
         case_sensitive=False,
     )
 
     # Application
     version: str = Field(default="0.3.0", description="Application version")
-    app_name: str = Field(default="Spider Aggregation", description="Application name")
+    app_name: str = Field(default="MindWeaver", description="Application name")
     debug: bool = Field(default=False, description="Debug mode")
     verbose: bool = Field(default=False, description="Verbose output")
 

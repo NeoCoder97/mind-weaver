@@ -1,8 +1,10 @@
-# Spider Aggregation
+# MindWeaver
 
 <div align="center">
 
-**个人知识/研究动态监测工具**
+**汇聚信息，提炼洞察**
+
+*个人知识/研究动态监测工具*
 
 [![Python](https://img.shields.io/badge/Python-3.14+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -39,8 +41,8 @@
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/NeoCoder97/spider-aggregation.git
-cd spider-aggregation
+git clone https://github.com/NeoCoder97/mind-weaver.git
+cd mind-weaver
 
 # 2. 安装 uv（如果尚未安装）
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -49,15 +51,15 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uv sync
 
 # 4. 启动应用
-uv run spider-aggregation
+uv run mind-weaver
 ```
 
 ### 使用 pip
 
 ```bash
 # 1. 克隆仓库
-git clone https://github.com/NeoCoder97/spider-aggregation.git
-cd spider-aggregation
+git clone https://github.com/NeoCoder97/mind-weaver.git
+cd mind-weaver
 
 # 2. 创建虚拟环境
 python -m venv .venv
@@ -69,7 +71,7 @@ source .venv/bin/activate  # Linux/macOS
 pip install -e .
 
 # 4. 启动应用
-spider-aggregation
+mind-weaver
 ```
 
 ---
@@ -79,18 +81,18 @@ spider-aggregation
 ### 1. 启动 Web 应用
 
 ```bash
-uv run spider-aggregation
+uv run mind-weaver
 ```
 
 或指定 host 和 port：
 
 ```bash
 # 设置环境变量
-export SPIDER_WEB_HOST=0.0.0.0
-export SPIDER_WEB_PORT=8000
+export MIND_WEB_HOST=0.0.0.0
+export MIND_WEB_PORT=8000
 
 # 启动应用
-uv run spider-aggregation
+uv run mind-weaver
 ```
 
 启动后访问：http://127.0.0.1:8000
@@ -125,11 +127,11 @@ uv run spider-aggregation
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
-| `SPIDER_WEB_HOST` | Web 服务器地址 | `127.0.0.1` |
-| `SPIDER_WEB_PORT` | Web 服务器端口 | `8000` |
-| `SPIDER_WEB_DEBUG` | 调试模式 | `False` |
-| `SPIDER_WEB_SECRET_KEY` | Flask secret key | 自动生成 |
-| `SPIDER_DB_PATH` | 数据库文件路径 | `data/spider_aggregation.db` |
+| `MIND_WEB_HOST` | Web 服务器地址 | `127.0.0.1` |
+| `MIND_WEB_PORT` | Web 服务器端口 | `8000` |
+| `MIND_WEB_DEBUG` | 调试模式 | `False` |
+| `MIND_WEB_SECRET_KEY` | Flask secret key | 自动生成 |
+| `MIND_DB_PATH` | 数据库文件路径 | `data/spider_aggregation.db` |
 
 ### 配置文件
 
@@ -328,7 +330,7 @@ uv run ruff check src/ tests/
 
 ### 如何更改数据库位置？
 
-设置 `SPIDER_DB_PATH` 环境变量或在 `config.yaml` 中配置。
+设置 `MIND_DB_PATH` 环境变量或在 `config.yaml` 中配置。
 
 ### 如何备份和恢复数据？
 

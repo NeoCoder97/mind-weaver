@@ -20,8 +20,11 @@
 - 📊 **结构化存储** - SQLite 数据库持久化
 - 🌐 **多语言支持** - 自动检测中文、英文、日文等内容
 - ⏱️ **阅读时间估算** - 自动计算文章阅读时长
-- 🎨 **Rich 终端界面** - 彩色输出和表格展示
-- 🛠️ **完整 CLI** - 命令行工具管理订阅源和内容
+- 🌐 **Web 管理界面** - 可视化管理和控制
+- 📝 **内容提取** - 自动抓取完整文章内容
+- 🏷️ **关键词提取** - 自动提取关键词标签
+- 📋 **过滤规则** - 基于关键词/正则/标签/语言的过滤
+- 🤖 **AI 摘要** - 可选的 AI 摘要生成
 
 ---
 
@@ -45,8 +48,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # 3. 安装依赖
 uv sync
 
-# 4. 验证安装
-uv run spider-aggregation --version
+# 4. 启动应用
+uv run spider-aggregation
 ```
 
 ### 使用 pip
@@ -65,211 +68,54 @@ source .venv/bin/activate  # Linux/macOS
 # 3. 安装依赖
 pip install -e .
 
-# 4. 验证安装
-spider-aggregation --version
+# 4. 启动应用
+spider-aggregation
 ```
 
 ---
 
 ## 快速开始
 
-### 1. 初始化数据库
+### 1. 启动 Web 应用
 
 ```bash
-uv run spider-aggregation init
+uv run spider-aggregation
 ```
 
-输出：
+或指定 host 和 port：
+
+```bash
+# 设置环境变量
+export SPIDER_WEB_HOST=0.0.0.0
+export SPIDER_WEB_PORT=8000
+
+# 启动应用
+uv run spider-aggregation
 ```
-Initializing Spider Aggregation database...
-✅ Database initialized at: data/spider_aggregation.db
-```
+
+启动后访问：http://127.0.0.1:8000
 
 ### 2. 添加订阅源
 
-```bash
-# 自动检测元数据
-uv run spider-aggregation add-feed https://blog.cloudflare.com/zh-cn/rss
-```
+在 Web 界面中：
+1. 点击 "Feeds" 标签
+2. 点击 "+ Add Feed" 按钮
+3. 输入订阅源 URL（会自动检测元数据）
+4. 配置名称、描述、抓取间隔等
+5. 点击 "Create Feed"
 
-输出：
-```
-Adding feed: https://blog.cloudflare.com/zh-cn/rss
+### 3. 启动调度器
 
-📡 Fetching feed metadata...
-   ✅ Feed title: The Cloudflare Blog
+在 Dashboard 页面：
+1. 点击 "Start Scheduler" 按钮启动自动抓取
+2. 调度器会根据每个订阅源的间隔自动抓取
+3. 点击 "Fetch All Now" 可以立即抓取所有订阅源
 
-✅ Feed added with ID: 1
-   Name: The Cloudflare Blog
-   URL: https://blog.cloudflare.com/zh-cn/rss
-   Enabled: True
-   Interval: 60 minutes
-```
+### 4. 管理条目
 
-### 3. 手动抓取
-
-```bash
-uv run spider-aggregation fetch --all
-```
-
-输出：
-```
-Fetching 1 feed(s)...
-
-✅ The Cloudflare Blog: 20 new, 0 skipped (20 total)
-
-✅ Fetch complete!
-   Total entries: 20
-   New entries: 20
-   Skipped (duplicates): 0
-```
-
-### 4. 查看条目
-
-```bash
-uv run spider-aggregation list-entries --limit 10
-```
-
-### 5. 启动自动调度
-
-```bash
-uv run spider-aggregation start
-```
-
-按 `Ctrl+C` 停止调度器。
-
----
-
-## 命令参考
-
-### 全局选项
-
-| 选项 | 描述 |
-|------|------|
-| `--db-path TEXT` | 数据库文件路径 |
-| `--verbose`, `-v` | 详细输出 |
-| `--help`, `-h` | 帮助信息 |
-| `--version` | 版本信息 |
-
-### 命令列表
-
-#### `init` - 初始化数据库
-
-```bash
-spider-aggregation init
-```
-
-#### `add-feed` - 添加订阅源
-
-```bash
-spider-aggregation add-feed URL [OPTIONS]
-```
-
-**选项**：
-- `--name TEXT`, `-n TEXT` - 订阅源名称（默认：自动检测）
-- `--description TEXT`, `-d TEXT` - 订阅源描述
-- `--interval INTEGER`, `-i INTEGER` - 抓取间隔（分钟）
-- `--enabled/--disabled` - 启用/禁用（默认：启用）
-
-**示例**：
-```bash
-# 自动检测
-spider-aggregation add-feed https://example.com/feed.xml
-
-# 指定名称和间隔
-spider-aggregation add-feed https://example.com/feed.xml --name "My Feed" --interval 120
-```
-
-#### `list-feeds` - 列出订阅源
-
-```bash
-spider-aggregation list-feeds [OPTIONS]
-```
-
-**选项**：
-- `--verbose`, `-v` - 显示详细信息
-
-**示例**：
-```bash
-# 基本列表
-spider-aggregation list-feeds
-
-# 详细信息
-spider-aggregation list-feeds --verbose
-```
-
-#### `fetch` - 手动抓取
-
-```bash
-spider-aggregation fetch [FEED_ID] [OPTIONS]
-```
-
-**选项**：
-- `--all`, `-a` - 抓取所有启用的订阅源
-- `--force`, `-f` - 强制抓取（忽略间隔）
-
-**示例**：
-```bash
-# 抓取所有
-spider-aggregation fetch --all
-
-# 抓取指定订阅源
-spider-aggregation fetch 1
-```
-
-#### `start` - 启动调度器
-
-```bash
-spider-aggregation start [OPTIONS]
-```
-
-**选项**：
-- `--workers INTEGER`, `-w INTEGER` - 工作线程数（默认：3）
-
-#### `list-entries` - 列出条目
-
-```bash
-spider-aggregation list-entries [OPTIONS]
-```
-
-**选项**：
-- `--feed-id INTEGER`, `-f INTEGER` - 按订阅源过滤
-- `--limit INTEGER`, `-l INTEGER` - 显示数量（默认：20）
-- `--offset INTEGER` - 分页偏移
-- `--language TEXT` - 按语言过滤（en, zh, ja 等）
-- `--search TEXT`, `-s TEXT` - 搜索内容
-
-**示例**：
-```bash
-# 最近 10 条
-spider-aggregation list-entries --limit 10
-
-# 中文条目
-spider-aggregation list-entries --language zh
-
-# 搜索
-spider-aggregation list-entries --search Python
-```
-
-#### `enable-feed` - 启用/禁用订阅源
-
-```bash
-spider-aggregation enable-feed FEED_ID [--enable|--disable]
-```
-
-#### `delete-feed` - 删除订阅源
-
-```bash
-spider-aggregation delete-feed FEED_ID
-```
-
-#### `cleanup` - 清理旧条目
-
-```bash
-spider-aggregation cleanup [--days INTEGER]
-```
-
-**默认清理 30 天前的条目**。
+- **Entries** 页面：查看所有抓取的条目
+- **Dashboard** 页面：查看统计信息和最近活动
+- **Rules** 页面：配置过滤规则
 
 ---
 
@@ -279,6 +125,10 @@ spider-aggregation cleanup [--days INTEGER]
 
 | 变量 | 描述 | 默认值 |
 |------|------|--------|
+| `SPIDER_WEB_HOST` | Web 服务器地址 | `127.0.0.1` |
+| `SPIDER_WEB_PORT` | Web 服务器端口 | `8000` |
+| `SPIDER_WEB_DEBUG` | 调试模式 | `False` |
+| `SPIDER_WEB_SECRET_KEY` | Flask secret key | 自动生成 |
 | `SPIDER_DB_PATH` | 数据库文件路径 | `data/spider_aggregation.db` |
 
 ### 配置文件
@@ -289,20 +139,112 @@ spider-aggregation cleanup [--days INTEGER]
 database:
   path: "data/spider_aggregation.db"
 
+web:
+  host: "127.0.0.1"
+  port: 8000
+  debug: false
+
 fetcher:
   timeout_seconds: 30
   max_retries: 3
-  max_content_length: 10000
-  user_agent: "Spider-Aggregation/0.1.0"
+  max_content_length: 100000
 
 scheduler:
   min_interval_minutes: 15
-  timezone: "UTC"
+  timezone: "Asia/Shanghai"
+  max_workers: 3
 
 deduplicator:
   strategy: "medium"  # strict, medium, relaxed
-  similarity_threshold: 0.85
+
+content_fetcher:
+  enabled: true
+  timeout_seconds: 30
+  max_content_length: 500000
+
+keyword_extractor:
+  enabled: true
+  max_keywords: 10
+
+summarizer:
+  enabled: true
+  method: "extractive"  # extractive or ai
 ```
+
+---
+
+## Web 界面功能
+
+### Dashboard
+- 统计概览（总条目数、订阅源数、过滤规则数）
+- 语言分布图表
+- 最近活动
+- 订阅源健康状态
+- 调度器控制（启动/停止/手动抓取）
+
+### Feeds 管理
+- 添加/编辑/删除订阅源
+- 启用/禁用订阅源
+- 手动触发抓取
+- 查看抓取状态和错误信息
+
+### Entries 浏览
+- 分页浏览所有条目
+- 按订阅源过滤
+- 搜索功能
+- 批量操作（删除、提取内容、关键词、摘要）
+
+### Filter Rules
+- 创建过滤规则（关键词/正则/标签/语言）
+- 设置匹配类型（include/exclude）
+- 优先级控制
+- 启用/禁用规则
+
+### Settings
+- 数据清理（删除旧条目）
+- 数据导出（JSON 格式）
+- 系统信息
+
+---
+
+## API 端点
+
+### 订阅源管理
+- `GET /api/feeds` - 获取订阅源列表
+- `POST /api/feeds` - 创建订阅源
+- `PUT /api/feeds/<id>` - 更新订阅源
+- `DELETE /api/feeds/<id>` - 删除订阅源
+- `POST /api/feeds/<id>/toggle` - 启用/禁用
+- `POST /api/feeds/<id>/fetch` - 手动抓取
+
+### 条目管理
+- `GET /api/entries/<id>` - 获取条目详情
+- `DELETE /api/entries/<id>` - 删除条目
+- `POST /api/entries/batch/delete` - 批量删除
+- `POST /api/entries/batch/fetch-content` - 批量提取内容
+- `POST /api/entries/batch/extract-keywords` - 批量提取关键词
+- `POST /api/entries/batch/summarize` - 批量生成摘要
+
+### 过滤规则管理
+- `GET /api/filter-rules` - 获取规则列表
+- `POST /api/filter-rules` - 创建规则
+- `PUT /api/filter-rules/<id>` - 更新规则
+- `DELETE /api/filter-rules/<id>` - 删除规则
+- `POST /api/filter-rules/<id>/toggle` - 启用/禁用
+
+### 调度器管理
+- `GET /api/scheduler/status` - 获取调度器状态
+- `POST /api/scheduler/start` - 启动调度器
+- `POST /api/scheduler/stop` - 停止调度器
+- `POST /api/scheduler/fetch-all` - 立即抓取所有
+
+### 系统
+- `GET /api/stats` - 获取统计信息
+- `GET /api/dashboard/activity` - 获取最近活动
+- `GET /api/dashboard/feed-health` - 获取订阅源健康状态
+- `POST /api/system/cleanup` - 清理旧条目
+- `GET /api/system/export/entries` - 导出条目
+- `GET /api/system/export/feeds` - 导出订阅源
 
 ---
 
@@ -310,11 +252,7 @@ deduplicator:
 
 ```
 ┌─────────────┐
-│     CLI     │  Click + Rich
-└──────┬──────┘
-       │
-┌──────▼──────┐
-│  Scheduler  │  APScheduler (定时任务)
+│  Web UI     │  Flask + Jinja2
 └──────┬──────┘
        │
 ┌──────▼───────────────────────────┐
@@ -322,6 +260,9 @@ deduplicator:
 │  ┌────────┐ ┌────────┐ ┌────────┐│
 │  │Fetcher │ │ Parser │ │Dedup  ││
 │  └────────┘ └────────┘ └────────┘│
+│  ┌──────────┐ ┌──────┐ ┌──────┐ │
+│  │Scheduler │ │Filter│ │NLP   │ │
+│  └──────────┘ └──────┘ └──────┘ │
 └──────┬───────────────────────────┘
        │
 ┌──────▼──────┐
@@ -337,8 +278,10 @@ deduplicator:
 | `Parser` | 内容解析和标准化，支持多语言检测 |
 | `Deduplicator` | 多策略去重（link/title/content hash） |
 | `Scheduler` | 定时任务调度，支持并发 |
-
-详细架构文档：[docs/architecture.md](docs/architecture.md)
+| `ContentFetcher` | 完整文章内容提取（Trafilatura） |
+| `FilterEngine` | 规则过滤（关键词/正则/标签/语言） |
+| `KeywordExtractor` | 关键词提取（NLTK/jieba） |
+| `Summarizer` | 摘要生成（抽取式/AI） |
 
 ---
 
@@ -370,16 +313,6 @@ uv run black src/ tests/
 uv run ruff check src/ tests/
 ```
 
-开发指南：[docs/development-guide.md](docs/development-guide.md)
-
----
-
-## 文档
-
-- [架构设计](docs/architecture.md) - 系统架构和模块设计
-- [API 参考](docs/api-reference.md) - CLI 和核心 API 文档
-- [开发指南](docs/development-guide.md) - 开发环境设置和最佳实践
-
 ---
 
 ## 性能
@@ -393,30 +326,9 @@ uv run ruff check src/ tests/
 
 ## 常见问题
 
-### 如何添加多个订阅源？
-
-```bash
-spider-aggregation add-feed https://feed1.com/rss
-spider-aggregation add-feed https://feed2.com/atom
-spider-aggregation add-feed https://feed3.com/rss
-```
-
-### 如何查看抓取日志？
-
-日志文件位于 `data/logs/`：
-
-```bash
-# 查看最新日志
-tail -f data/logs/spider_$(date +%Y-%m-%d).log
-```
-
 ### 如何更改数据库位置？
 
-使用 `--db-path` 选项或设置 `SPIDER_DB_PATH` 环境变量：
-
-```bash
-spider-aggregation --db-path /custom/path/db.sqlite init
-```
+设置 `SPIDER_DB_PATH` 环境变量或在 `config.yaml` 中配置。
 
 ### 如何备份和恢复数据？
 
@@ -428,11 +340,19 @@ cp data/spider_aggregation.db data/backup_$(date +%Y%m%d).db
 cp data/backup_20260201.db data/spider_aggregation.db
 ```
 
+或在 Settings 页面使用 "Data Export" 功能。
+
+### 如何启用 AI 摘要？
+
+1. 安装 AI 依赖：`uv sync --all-extras`
+2. 在 `config.yaml` 中配置 AI API 密钥
+3. 在 Settings 中启用 AI 摘要
+
 ---
 
 ## 贡献
 
-欢迎贡献！请查看 [开发指南](docs/development-guide.md) 了解详情。
+欢迎贡献！
 
 1. Fork 项目
 2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
@@ -453,8 +373,10 @@ cp data/backup_20260201.db data/spider_aggregation.db
 - [feedparser](https://github.com/kurtmckee/feedparser) - RSS/Atom 解析
 - [APScheduler](https://github.com/agronholm/apscheduler) - 任务调度
 - [SQLAlchemy](https://www.sqlalchemy.org/) - ORM
-- [Click](https://click.palletsprojects.com/) - CLI 框架
-- [Rich](https://rich.readthedocs.io/) - 终端美化
+- [Flask](https://flask.palletsprojects.com/) - Web 框架
+- [Trafilatura](https://github.com/adbar/trafilatura) - 内容提取
+- [jieba](https://github.com/fxsjy/jieba) - 中文分词
+- [NLTK](https://www.nltk.org/) - 自然语言处理
 
 ---
 
@@ -465,22 +387,26 @@ cp data/backup_20260201.db data/spider_aggregation.db
 - 内容解析和标准化
 - 多层次去重
 - 定时任务调度
-- 完整 CLI
+- Web 管理界面
 
-### 🔜 Phase 2 (计划中)
-- AI 摘要生成
+### ✅ Phase 2 (已完成)
+- 完整文章内容提取
 - 关键词提取
-- Web UI
+- 过滤规则引擎
+- 批量操作
+- AI 摘要（可选）
 
-### 📋 Phase 3 (未来)
-- 用户行为追踪
-- 兴趣模型
-- 智能推荐
+### 📋 Phase 3 (计划中)
+- 全文搜索
+- 条目分组和收藏
+- 导出功能增强（Markdown、PDF）
+- 订阅源分类
 
 ### 🚀 Phase 4 (长期)
 - 多源采集（网页、API、社交媒体）
 - 事件聚类
 - 趋势分析
+- 智能推荐
 
 ---
 

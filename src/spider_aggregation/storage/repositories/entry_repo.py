@@ -56,38 +56,110 @@ class EntryRepository:
         """
         return self.session.query(EntryModel).filter(EntryModel.id == entry_id).first()
 
-    def get_by_link_hash(self, link_hash: str) -> Optional[EntryModel]:
+    def get_by_link_hash(
+        self, link_hash: str, feed_id: Optional[int] = None
+    ) -> Optional[EntryModel]:
         """Get an entry by link hash.
 
         Args:
             link_hash: Hash of the entry link
+            feed_id: Optional feed ID to restrict search
 
         Returns:
             EntryModel instance or None
         """
-        return self.session.query(EntryModel).filter(EntryModel.link_hash == link_hash).first()
+        query = self.session.query(EntryModel).filter(EntryModel.link_hash == link_hash)
+        if feed_id is not None:
+            query = query.filter(EntryModel.feed_id == feed_id)
+        return query.first()
 
-    def get_by_title_hash(self, title_hash: str) -> Optional[EntryModel]:
+    def get_by_link_hash_any_feed(
+        self, link_hash: str, feed_ids: Optional[list[int]] = None
+    ) -> Optional[EntryModel]:
+        """Get an entry by link hash across multiple feeds.
+
+        Args:
+            link_hash: Hash of the entry link
+            feed_ids: Optional list of feed IDs to restrict search
+
+        Returns:
+            EntryModel instance or None
+        """
+        query = self.session.query(EntryModel).filter(EntryModel.link_hash == link_hash)
+        if feed_ids:
+            query = query.filter(EntryModel.feed_id.in_(feed_ids))
+        return query.first()
+
+    def get_by_title_hash(
+        self, title_hash: str, feed_id: Optional[int] = None
+    ) -> Optional[EntryModel]:
         """Get an entry by title hash.
 
         Args:
             title_hash: Hash of the entry title
+            feed_id: Optional feed ID to restrict search
 
         Returns:
             EntryModel instance or None
         """
-        return self.session.query(EntryModel).filter(EntryModel.title_hash == title_hash).first()
+        query = self.session.query(EntryModel).filter(EntryModel.title_hash == title_hash)
+        if feed_id is not None:
+            query = query.filter(EntryModel.feed_id == feed_id)
+        return query.first()
 
-    def get_by_content_hash(self, content_hash: str) -> Optional[EntryModel]:
+    def get_by_title_hash_any_feed(
+        self, title_hash: str, feed_ids: Optional[list[int]] = None
+    ) -> Optional[EntryModel]:
+        """Get an entry by title hash across multiple feeds.
+
+        Args:
+            title_hash: Hash of the entry title
+            feed_ids: Optional list of feed IDs to restrict search
+
+        Returns:
+            EntryModel instance or None
+        """
+        query = self.session.query(EntryModel).filter(EntryModel.title_hash == title_hash)
+        if feed_ids:
+            query = query.filter(EntryModel.feed_id.in_(feed_ids))
+        return query.first()
+
+    def get_by_content_hash(
+        self, content_hash: str, feed_id: Optional[int] = None
+    ) -> Optional[EntryModel]:
         """Get an entry by content hash.
 
         Args:
             content_hash: Hash of the entry content
+            feed_id: Optional feed ID to restrict search
 
         Returns:
             EntryModel instance or None
         """
-        return self.session.query(EntryModel).filter(EntryModel.content_hash == content_hash).first()
+        query = self.session.query(EntryModel).filter(EntryModel.content_hash == content_hash)
+        if feed_id is not None:
+            query = query.filter(EntryModel.feed_id == feed_id)
+        return query.first()
+
+    def get_by_title_and_content(
+        self, title_hash: str, content_hash: str, feed_id: Optional[int] = None
+    ) -> Optional[EntryModel]:
+        """Get an entry by matching both title and content hash.
+
+        Args:
+            title_hash: Hash of the entry title
+            content_hash: Hash of the entry content
+            feed_id: Optional feed ID to restrict search
+
+        Returns:
+            EntryModel instance or None
+        """
+        query = self.session.query(EntryModel).filter(
+            EntryModel.title_hash == title_hash, EntryModel.content_hash == content_hash
+        )
+        if feed_id is not None:
+            query = query.filter(EntryModel.feed_id == feed_id)
+        return query.first()
 
     def list(
         self,

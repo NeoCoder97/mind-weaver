@@ -1,5 +1,13 @@
 """Data models for spider aggregation."""
 
+from spider_aggregation.models.base import Base
+from spider_aggregation.models.category import (
+    CategoryCreate,
+    CategoryListResponse,
+    CategoryModel,
+    CategoryResponse,
+    CategoryUpdate,
+)
 from spider_aggregation.models.entry import (
     EntryCreate,
     EntryListResponse,
@@ -13,12 +21,12 @@ from spider_aggregation.models.entry import (
     FilterRuleListResponse,
 )
 from spider_aggregation.models.feed import (
-    Base,
     FeedCreate,
     FeedListResponse,
     FeedModel,
     FeedResponse,
     FeedUpdate,
+    feed_categories,
 )
 
 __all__ = [
@@ -28,6 +36,7 @@ __all__ = [
     "FeedUpdate",
     "FeedResponse",
     "FeedListResponse",
+    "feed_categories",
     "EntryModel",
     "EntryCreate",
     "EntryUpdate",
@@ -38,4 +47,9 @@ __all__ = [
     "FilterRuleUpdate",
     "FilterRuleResponse",
     "FilterRuleListResponse",
+    "CategoryModel",
+    "CategoryCreate",
+    "CategoryUpdate",
+    "CategoryResponse",
+    "CategoryListResponse",
 ]

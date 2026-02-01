@@ -6,17 +6,14 @@ from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, Index
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Table, Text, Index, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from spider_aggregation.models.base import Base
 
 if TYPE_CHECKING:
     from spider_aggregation.models.entry import EntryModel
-
-
-class Base(DeclarativeBase):
-    """Base class for all ORM models."""
-
-    pass
+    from spider_aggregation.models.category import CategoryModel
 
 
 class FeedModel(Base):
@@ -62,8 +59,26 @@ class FeedModel(Base):
         cascade="all, delete-orphan",
     )
 
+    # Relationship to Categories (many-to-many)
+    categories: Mapped[list["CategoryModel"]] = relationship(
+        "CategoryModel",
+        secondary="feed_categories",
+        back_populates="feeds",
+    )
+
     def __repr__(self) -> str:
         return f"<FeedModel(id={self.id}, url='{self.url}', name='{self.name}')>"
+
+
+# Feed-Category junction table (many-to-many)
+feed_categories = Table(
+    "feed_categories",
+    Base.metadata,
+    Column("feed_id", Integer, ForeignKey("feeds.id", ondelete="CASCADE"), primary_key=True),
+    Column("category_id", Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True),
+    Index("ix_feed_categories_feed_id", "feed_id"),
+    Index("ix_feed_categories_category_id", "category_id"),
+)
 
 
 # Pydantic models for API
@@ -106,6 +121,7 @@ class FeedResponse(FeedBase):
     fetch_error_count: int
     last_error: Optional[str] = None
     last_error_at: Optional[datetime] = None
+    categories: list = Field(default_factory=list)  # List of category dicts
 
 
 class FeedListResponse(BaseModel):

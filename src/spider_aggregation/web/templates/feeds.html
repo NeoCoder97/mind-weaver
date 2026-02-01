@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}订阅源 - Spider Aggregation{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>订阅源管理</h2>
+    <button type="button" class="btn btn-primary" onclick="showAddFeedModal()">+ 添加订阅源</button>
+</div>
+
+<div class="feeds-list">
+    {% for feed in feeds %}
+    <div class="feed-card" data-feed-id="{{ feed.id }}">
+        <div class="feed-header">
+            <h3 class="feed-name">
+                <a href="{{ feed.url }}" target="_blank" rel="noopener">{{ feed.name or feed.url }}</a>
+            </h3>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span class="feed-status {% if feed.enabled %}enabled{% else %}disabled{% endif %}">
+                    {{ "已启用" if feed.enabled else "已禁用" }}
+                </span>
+                <div class="btn-group">
+                    <button type="button" class="btn-icon" onclick="showEditFeedModal({{ feed.id }})" title="编辑">✏️</button>
+                    <button type="button" class="btn-icon" onclick="toggleFeed({{ feed.id }})" title="{{ '禁用' if feed.enabled else '启用' }}">
+                        {{ '⏸️' if feed.enabled else '▶️' }}
+                    </button>
+                    <button type="button" class="btn-icon" onclick="fetchFeed({{ feed.id }})" title="立即抓取">🔄</button>
+                    <button type="button" class="btn-icon" onclick="deleteFeed({{ feed.id }})" title="删除">🗑️</button>
+                </div>
+            </div>
+        </div>
+        {% if feed.description %}
+        <p class="feed-description">{{ feed.description }}</p>
+        {% endif %}
+        <div class="feed-meta">
+            <span class="feed-url" title="{{ feed.url }}">{{ feed.url[:60] }}{% if feed.url|length > 60 %}...{% endif %}</span>
+            <span>间隔: {{ feed.fetch_interval_minutes }} 分钟</span>
+            {% if feed.last_fetched_at %}
+            <span>最后抓取: {{ feed.last_fetched_at|format_datetime }}</span>
+            {% endif %}
+            {% if feed.fetch_error_count > 0 %}
+            <span class="badge badge-{{ 'error' if feed.fetch_error_count > 5 else 'warning' }}">
+                {{ feed.fetch_error_count }} 个错误
+            </span>
+            {% endif %}
+        </div>
+        {% if feed.last_error %}
+        <div class="feed-error">
+            <span class="error-text">{{ feed.last_error }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>暂无订阅源</p>
+        <p><button type="button" class="btn btn-primary" onclick="showAddFeedModal()">+ 添加第一个订阅源</button></p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+<script>
+    // Store feed data for editing
+    window.feedData = {{ feeds|tojson|safe }};
+</script>
+{% endblock %}

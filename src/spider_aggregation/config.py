@@ -174,6 +174,65 @@ class WebConfig(BaseSettings):
     host: str = Field(default="127.0.0.1", description="Web server host")
     port: int = Field(default=8000, ge=1, le=65535, description="Web server port")
     reload: bool = Field(default=False, description="Auto-reload on code changes")
+    debug: bool = Field(default=False, description="Debug mode")
+    secret_key: str = Field(default="dev-secret-key", description="Secret key for sessions")
+
+
+class ContentFetcherConfig(BaseSettings):
+    """Content fetcher configuration for Phase 2."""
+
+    model_config = SettingsConfigDict(env_prefix="CONTENT_FETCHER_")
+
+    enabled: bool = Field(default=True, description="Enable full content fetching")
+    timeout_seconds: int = Field(default=30, ge=1, le=300, description="Request timeout")
+    max_retries: int = Field(default=3, ge=0, le=10, description="Maximum retry attempts")
+    retry_delay_seconds: int = Field(default=5, ge=1, description="Retry delay")
+    max_content_length: int = Field(
+        default=500_000,
+        ge=10_000,
+        le=5_000_000,
+        description="Maximum content length in bytes"
+    )
+    user_agent: str = Field(
+        default="Spider-Aggregation/0.2.0 (+https://github.com/spider-aggregation)",
+        description="User-Agent header"
+    )
+
+
+class KeywordExtractorConfig(BaseSettings):
+    """Keyword extractor configuration for Phase 2."""
+
+    model_config = SettingsConfigDict(env_prefix="KEYWORD_EXTRACTOR_")
+
+    enabled: bool = Field(default=True, description="Enable keyword extraction")
+    max_keywords: int = Field(default=10, ge=1, le=50, description="Maximum keywords to extract")
+    min_keyword_length: int = Field(default=2, ge=1, description="Minimum keyword length")
+    language: str = Field(default="auto", description="Language: auto, en, zh")
+
+
+class SummarizerConfig(BaseSettings):
+    """Summarizer configuration for Phase 2."""
+
+    model_config = SettingsConfigDict(env_prefix="SUMMARIZER_")
+
+    enabled: bool = Field(default=True, description="Enable summarization")
+    method: str = Field(default="extractive", description="Method: extractive or ai")
+    max_sentences: int = Field(default=3, ge=1, le=10, description="Maximum sentences in summary")
+    min_sentence_length: int = Field(default=10, ge=5, description="Minimum sentence length")
+
+    # AI summarization (optional)
+    ai_model: str = Field(default="gpt-3.5-turbo", description="OpenAI model for summarization")
+    ai_max_tokens: int = Field(default=150, ge=50, le=500, description="Max tokens for AI summary")
+
+
+class FilterConfig(BaseSettings):
+    """Filter engine configuration for Phase 2."""
+
+    model_config = SettingsConfigDict(env_prefix="FILTER_")
+
+    enabled: bool = Field(default=True, description="Enable filtering")
+    auto_apply: bool = Field(default=False, description="Auto-apply filters on fetch")
+    cache_size: int = Field(default=100, ge=0, description="Rule cache size")
 
 
 class Config(BaseSettings):
@@ -187,6 +246,7 @@ class Config(BaseSettings):
     )
 
     # Application
+    version: str = Field(default="0.3.0", description="Application version")
     app_name: str = Field(default="Spider Aggregation", description="Application name")
     debug: bool = Field(default=False, description="Debug mode")
     verbose: bool = Field(default=False, description="Verbose output")
@@ -199,6 +259,10 @@ class Config(BaseSettings):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     feed: FeedConfig = Field(default_factory=FeedConfig)
     web: WebConfig = Field(default_factory=WebConfig)
+    content_fetcher: ContentFetcherConfig = Field(default_factory=ContentFetcherConfig)
+    keyword_extractor: KeywordExtractorConfig = Field(default_factory=KeywordExtractorConfig)
+    summarizer: SummarizerConfig = Field(default_factory=SummarizerConfig)
+    filter: FilterConfig = Field(default_factory=FilterConfig)
 
     # Paths
     config_dir: str = Field(default="config", description="Configuration directory")
@@ -254,7 +318,8 @@ def load_config_from_yaml(yaml_path: str) -> Config:
     nested_configs = {}
 
     for key, value in config_dict.items():
-        if key in ["database", "scheduler", "fetcher", "deduplicator", "logging", "feed", "web"]:
+        if key in ["database", "scheduler", "fetcher", "deduplicator", "logging", "feed", "web",
+                   "content_fetcher", "keyword_extractor", "summarizer", "filter"]:
             nested_configs[key] = value
         else:
             main_config[key] = value
@@ -268,6 +333,10 @@ def load_config_from_yaml(yaml_path: str) -> Config:
         "logging": LoggingConfig,
         "feed": FeedConfig,
         "web": WebConfig,
+        "content_fetcher": ContentFetcherConfig,
+        "keyword_extractor": KeywordExtractorConfig,
+        "summarizer": SummarizerConfig,
+        "filter": FilterConfig,
     }
 
     for key, config_class in config_classes.items():

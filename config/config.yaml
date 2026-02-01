@@ -1,73 +1,71 @@
 # Spider Aggregation Configuration
+# This is the default configuration file
 
-# Application settings
-app_name: "Spider Aggregation"
-debug: false
-verbose: false
-
-# Database configuration
 database:
+  # Path to SQLite database file
   path: "data/spider_aggregation.db"
-  echo: false
-  pool_size: 5
-  max_overflow: 10
 
-# Scheduler configuration
-scheduler:
-  enabled: true
-  timezone: "Asia/Shanghai"
-  default_interval_minutes: 60
-  min_interval_minutes: 10
-  max_workers: 3
-  misfire_grace_time: 300
-  coalesce: true
-  max_retries: 3
-  retry_backoff_seconds: 60
-
-# Fetcher configuration
 fetcher:
+  # HTTP timeout in seconds
   timeout_seconds: 30
-  user_agent: "Spider-Aggregation/0.1.0 (+https://github.com/spider-aggregation)"
+
+  # Maximum number of retry attempts
   max_retries: 3
+
+  # Delay between retries in seconds
   retry_delay_seconds: 5
-  max_content_length: 100000
-  follow_redirects: true
-  max_redirects: 5
 
-# Deduplicator configuration
+  # Maximum content length to store (in characters)
+  max_content_length: 10000
+
+  # User agent string for HTTP requests
+  user_agent: "Spider-Aggregation/0.1.0"
+
+scheduler:
+  # Minimum interval between feed fetches (in minutes)
+  min_interval_minutes: 15
+
+  # Timezone for scheduler
+  timezone: "UTC"
+
+  # Default number of worker threads
+  max_workers: 3
+
 deduplicator:
-  enabled: true
-  link_hash_method: "sha256"
-  title_hash_method: "md5"
-  content_hash_method: "sha256"
-  title_similarity_threshold: 0.85
-  check_by_link: true
-  check_by_title: true
-  check_by_content: false
+  # Deduplication strategy: strict, medium, relaxed
+  # - strict: link_hash OR (title_hash AND content_hash)
+  # - medium: link_hash OR title_hash (default)
+  # - relaxed: title_hash OR content_hash (similarity > 85%)
+  strategy: "medium"
 
-# Logging configuration
+  # Similarity threshold for content matching (0.0 - 1.0)
+  similarity_threshold: 0.85
+
+parser:
+  # Strip HTML tags from content
+  strip_html: true
+
+  # Preserve paragraphs when stripping HTML
+  preserve_paragraphs: true
+
+  # Maximum title length
+  max_title_length: 500
+
+  # Maximum summary length
+  max_summary_length: 1000
+
 logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
   level: "INFO"
-  file_enabled: true
-  file_path: "logs/spider_aggregation.log"
-  rotation: "100 MB"
-  retention: "30 days"
-  console_enabled: true
 
-# Feed configuration
-feed:
-  validate_url: true
-  check_interval_hours: 24
-  max_consecutive_errors: 10
-  error_backoff_hours: 1
+  # Log file path (use empty string for no file logging)
+  file_path: "data/logs/spider_{time}.log"
 
-# Web API configuration (disabled by default)
-web:
-  enabled: false
-  host: "127.0.0.1"
-  port: 8000
-  reload: false
+  # Log rotation size (in MB)
+  rotation_size: 10
 
-# Paths
-config_dir: "config"
-data_dir: "data"
+  # Log retention period (in days)
+  retention_days: 30
+
+  # Log to console
+  console: true

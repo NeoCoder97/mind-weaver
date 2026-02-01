@@ -148,11 +148,33 @@ class ContentParser:
         """Normalize entry summary.
 
         Args:
-            summary: Raw summary
+            summary: Raw summary (can be string, list, or dict)
 
         Returns:
             Normalized summary
         """
+        if not summary:
+            return None
+
+        # Handle list format
+        if isinstance(summary, list):
+            for item in summary:
+                if isinstance(item, dict) and "value" in item:
+                    summary = item["value"]
+                    break
+                elif isinstance(item, str):
+                    summary = item
+                    break
+            if not summary:
+                return None
+
+        # Handle dict format
+        if isinstance(summary, dict):
+            summary = summary.get("value") or summary.get("summary")
+
+        # Convert to string
+        summary = str(summary) if summary else None
+
         if not summary:
             return None
 
@@ -176,11 +198,34 @@ class ContentParser:
         """Normalize entry content.
 
         Args:
-            content: Raw content
+            content: Raw content (can be string, list, or dict)
 
         Returns:
             Normalized content
         """
+        if not content:
+            return None
+
+        # Handle list format (feedparser sometimes returns content as list)
+        if isinstance(content, list):
+            # Take the first non-empty content
+            for item in content:
+                if isinstance(item, dict) and "value" in item:
+                    content = item["value"]
+                    break
+                elif isinstance(item, str):
+                    content = item
+                    break
+            if not content:
+                return None
+
+        # Handle dict format
+        if isinstance(content, dict):
+            content = content.get("value") or content.get("content")
+
+        # Convert to string
+        content = str(content) if content else None
+
         if not content:
             return None
 

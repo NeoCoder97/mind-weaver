@@ -59,16 +59,19 @@ class FeedScheduler:
         self,
         session: Optional[Session] = None,
         max_workers: int = 3,
+        db_manager=None,
     ):
         """Initialize feed scheduler.
 
         Args:
             session: Optional database session for feed operations
             max_workers: Maximum number of concurrent worker threads
+            db_manager: Optional DatabaseManager for creating sessions in jobs
         """
         config = get_config()
 
         self.session = session
+        self.db_manager = db_manager
         self.max_workers = max_workers
         self.fetch_interval_minutes = config.scheduler.min_interval_minutes
 
@@ -320,17 +323,24 @@ class FeedScheduler:
         Returns:
             FetchResult
         """
-        if not self.session:
-            logger.error(f"No database session for job feed_{feed_id}")
-            return FetchResult(
-                success=False,
-                feed_id=feed_id,
-                feed_url="",
-                error="No database session",
-            )
+        # Use provided session or create a new one from db_manager
+        session = self.session
+        session_needs_close = False
+
+        if not session:
+            if not self.db_manager:
+                logger.error(f"No database session or db_manager for job feed_{feed_id}")
+                return FetchResult(
+                    success=False,
+                    feed_id=feed_id,
+                    feed_url="",
+                    error="No database session",
+                )
+            session = self.db_manager.session()
+            session_needs_close = True
 
         try:
-            repo = FeedRepository(self.session)
+            repo = FeedRepository(session)
             feed = repo.get_by_id(feed_id)
 
             if not feed:
@@ -351,7 +361,7 @@ class FeedScheduler:
                     entries_count=0,
                 )
 
-            fetcher = FeedFetcher(session=self.session)
+            fetcher = FeedFetcher(session=session)
             result = fetcher.fetch_feed(feed)
 
             self.stats.total_executions += 1
@@ -373,8 +383,11 @@ class FeedScheduler:
                 success=False,
                 feed_id=feed_id,
                 feed_url="",
-                error=f"Job error: {type(e).__name__}: {str(e)}",
+                error=str(e),
             )
+        finally:
+            if session_needs_close:
+                session.close()
 
     def _fetch_feeds_wrapper(self, feed_ids: list[int]) -> list[FetchResult]:
         """Wrapper for fetching multiple feeds.
@@ -424,14 +437,16 @@ class FeedScheduler:
 def create_scheduler(
     session: Optional[Session] = None,
     max_workers: int = 3,
+    db_manager=None,
 ) -> FeedScheduler:
     """Create a configured FeedScheduler instance.
 
     Args:
         session: Optional database session
         max_workers: Maximum number of concurrent worker threads
+        db_manager: Optional DatabaseManager for creating sessions in jobs
 
     Returns:
         Configured FeedScheduler instance
     """
-    return FeedScheduler(session=session, max_workers=max_workers)
+    return FeedScheduler(session=session, max_workers=max_workers, db_manager=db_manager)

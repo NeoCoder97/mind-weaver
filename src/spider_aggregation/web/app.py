@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional, Any
 
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from markupsafe import Markup
 
 from spider_aggregation.config import get_config
 from spider_aggregation.logger import get_logger
@@ -180,6 +181,22 @@ def create_app(
             return str(value)
 
     app.jinja_env.filters["format_datetime"] = format_datetime
+
+    # nl2br filter for converting newlines to <br> tags
+    def nl2br(value):
+        """Convert newlines to <br> tags.
+
+        Args:
+            value: String with newlines
+
+        Returns:
+            String with newlines converted to <br> tags
+        """
+        if value is None:
+            return ""
+        return Markup(str(value).replace('\n', '<br>\n'))
+
+    app.jinja_env.filters["nl2br"] = nl2br
 
     # Database path
     if db_path is None:

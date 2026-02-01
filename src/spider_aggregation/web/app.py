@@ -327,6 +327,9 @@ def create_app(
             else:
                 entry.tags_list = []
 
+            # Expunge from session so it can be accessed after session closes
+            session.expunge(entry)
+
         return render_template("entry.html", entry=entry)
 
     # ========================================================================

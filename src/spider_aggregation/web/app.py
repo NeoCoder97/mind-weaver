@@ -4,9 +4,9 @@ Flask application for spider-aggregation web UI.
 
 import json
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 
@@ -144,25 +144,38 @@ def create_app(
 
     # Custom Jinja2 filters
     def format_datetime(value: Optional[Any], format_str: str = "%Y-%m-%d %H:%M") -> str:
-        """Format datetime object or ISO datetime string to specified format.
+        """Format datetime object or ISO datetime string to China timezone.
 
         Args:
             value: datetime object, ISO format datetime string, or None
             format_str: strftime format string
 
         Returns:
-            Formatted datetime string or '从未' if None
+            Formatted datetime string in China timezone (UTC+8) or '从未' if None
         """
         if not value:
             return "从未"
         try:
-            from datetime import datetime
-            # If already a datetime object, format it directly
+            from datetime import datetime, timezone
+            # If already a datetime object, convert to China timezone
             if hasattr(value, 'strftime'):
-                return value.strftime(format_str)
+                dt = value
+                # If naive (no timezone), assume UTC
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                # Convert to China timezone (UTC+8)
+                china_tz = timezone(timedelta(hours=8))
+                dt_china = dt.astimezone(china_tz)
+                return dt_china.strftime(format_str)
             # Otherwise parse as ISO string
             dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-            return dt.strftime(format_str)
+            # If naive, assume UTC
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            # Convert to China timezone (UTC+8)
+            china_tz = timezone(timedelta(hours=8))
+            dt_china = dt.astimezone(china_tz)
+            return dt_china.strftime(format_str)
         except (ValueError, AttributeError):
             return str(value)
 

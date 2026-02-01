@@ -266,12 +266,14 @@ App.form = {
 App.formatDate = function(dateStr) {
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString('zh-CN', {
+    return date.toLocaleString('zh-CN', {
         year: 'numeric',
-        month: 'long',
-        day: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
     });
 };
 
@@ -287,13 +289,13 @@ App.formatRelativeTime = function(dateStr) {
     if (days > 7) {
         return App.formatDate(dateStr);
     } else if (days > 0) {
-        return `${days} day${days > 1 ? 's' : ''} ago`;
+        return `${days}天前`;
     } else if (hours > 0) {
-        return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        return `${hours}小时前`;
     } else if (minutes > 0) {
-        return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        return `${minutes}分钟前`;
     } else {
-        return 'Just now';
+        return '刚刚';
     }
 };
 

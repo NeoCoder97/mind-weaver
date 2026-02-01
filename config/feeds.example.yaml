@@ -1,0 +1,32 @@
+# Example feed subscriptions
+# Copy this file to feeds.yaml and add your subscriptions
+
+feeds:
+  # Technology
+  - name: "Hacker News"
+    url: "https://news.ycombinator.com/rss"
+    enabled: true
+    description: "Hacker News RSS Feed"
+
+  - name: "TechCrunch"
+    url: "https://techcrunch.com/feed/"
+    enabled: true
+    description: "TechCrunch RSS Feed"
+
+  # Science
+  - name: "Nature News"
+    url: "https://www.nature.com/nrss/articles/news.rss"
+    enabled: true
+    description: "Nature News RSS Feed"
+
+  # Chinese sources
+  - name: "WeChat Public Account Example"
+    url: "https://wechat2rss.xlab.app/feed/5b925323244e9737c39285596c53e3a2f4a30774.xml"
+    enabled: false
+    description: "Example WeChat public account feed"
+
+  # Add more feeds below...
+  # - name: "Feed Name"
+  #   url: "https://example.com/rss"
+  #   enabled: true
+  #   description: "Feed description"

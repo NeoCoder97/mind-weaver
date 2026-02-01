@@ -1,0 +1,60 @@
+# Example filter rules
+# Copy this file to filters.yaml and configure your filtering rules
+
+filters:
+  # Include keywords - entries matching ANY of these will be included
+  - name: "AI & Machine Learning"
+    enabled: true
+    type: "include"
+    rule_type: "keyword"
+    keywords:
+      - "artificial intelligence"
+      - "machine learning"
+      - "deep learning"
+      - "neural network"
+      - "LLM"
+      - "GPT"
+      - "transformer"
+    priority: 10
+
+  # Exclude keywords - entries matching ANY of these will be excluded
+  - name: "Spam / Low Quality"
+    enabled: true
+    type: "exclude"
+    rule_type: "keyword"
+    keywords:
+      - "clickbait"
+      - "sponsored"
+      - "advertisement"
+    priority: 1
+
+  # Regex filters
+  - name: "Programming Languages"
+    enabled: true
+    type: "include"
+    rule_type: "regex"
+    patterns:
+      - "\\b(Python|JavaScript|TypeScript|Go|Rust|Java)\\b"
+    priority: 5
+
+  # Tag filters
+  - name: "Tech Topics"
+    enabled: true
+    type: "include"
+    rule_type: "tag"
+    tags:
+      - "technology"
+      - "programming"
+      - "software"
+    priority: 5
+
+  # Language filter
+  - name: "English Only"
+    enabled: false
+    type: "include"
+    rule_type: "language"
+    languages:
+      - "en"
+    priority: 3
+
+# Filter execution order: higher priority numbers are checked first

@@ -112,10 +112,12 @@ class FeedBlueprint(CRUDBlueprint):
             API response
         """
         from spider_aggregation.storage.database import DatabaseManager
-        from spider_aggregation.core.fetcher import FeedFetcher
-        from spider_aggregation.core.parser import ContentParser
-        from spider_aggregation.core.deduplicator import Deduplicator
-        from spider_aggregation.core.filter_engine import FilterEngine
+        from spider_aggregation.core.services import (
+            FetcherService,
+            ParserService,
+            DeduplicatorService,
+            FilterService,
+        )
 
         logger = get_logger(__name__)
         db_manager = DatabaseManager(self.db_path)
@@ -127,10 +129,11 @@ class FeedBlueprint(CRUDBlueprint):
             if not feed:
                 return api_response(success=False, error="未找到订阅源", status=404)
 
-            # Fetch and process feed
-            fetcher = FeedFetcher()
-            parser = ContentParser()
-            deduplicator = Deduplicator()
+            # Use Service Facades for all core operations
+            fetcher = FetcherService(session=session)
+            parser = ParserService()
+            deduplicator = DeduplicatorService(session=session)
+            filter_service = FilterService()
 
             from spider_aggregation.storage.repositories.entry_repo import EntryRepository
             from spider_aggregation.storage.repositories.filter_rule_repo import FilterRuleRepository
@@ -172,8 +175,7 @@ class FeedBlueprint(CRUDBlueprint):
                     continue
 
                 # Apply filter rules
-                filter_engine = FilterEngine()
-                filter_result = filter_engine.apply(parsed, filter_rule_repo)
+                filter_result = filter_service.apply(parsed, filter_rule_repo)
                 if not filter_result.allowed:
                     continue
 
@@ -184,9 +186,10 @@ class FeedBlueprint(CRUDBlueprint):
                 entries_created += 1
 
             # Update fetch info
+            from datetime import datetime
             repo.update_fetch_info(
                 feed,
-                last_fetched_at=fetch_result.last_fetched_at,
+                last_fetched_at=datetime.utcnow(),
                 reset_errors=True,
                 etag=fetch_result.etag,
                 last_modified=fetch_result.last_modified
@@ -277,28 +280,27 @@ class FeedBlueprint(CRUDBlueprint):
             API response
         """
         from spider_aggregation.storage.database import DatabaseManager
-        from spider_aggregation.models import CategoryModel
+        from spider_aggregation.storage.repositories.category_repo import CategoryRepository
 
         db_manager = DatabaseManager(self.db_path)
 
         with db_manager.session() as session:
-            repo = self._get_repository(session)
-            feed = repo.get_by_id(feed_id)
+            feed_repo = self._get_repository(session)
+            category_repo = CategoryRepository(session)
+            feed = feed_repo.get_by_id(feed_id)
 
             if not feed:
                 return api_response(success=False, error="未找到订阅源", status=404)
 
-            category = session.query(CategoryModel).filter(
-                CategoryModel.id == category_id
-            ).first()
+            category = category_repo.get_by_id(category_id)
 
             if not category:
                 return api_response(success=False, error="未找到分类", status=404)
 
-            repo.add_category(feed, category)
+            feed_repo.add_category(feed, category)
 
             from spider_aggregation.web.serializers import category_to_dict
-            categories = repo.get_categories(feed)
+            categories = feed_repo.get_categories(feed)
             data = [category_to_dict(c) for c in categories]
 
         return api_response(
@@ -318,28 +320,27 @@ class FeedBlueprint(CRUDBlueprint):
             API response
         """
         from spider_aggregation.storage.database import DatabaseManager
-        from spider_aggregation.models import CategoryModel
+        from spider_aggregation.storage.repositories.category_repo import CategoryRepository
 
         db_manager = DatabaseManager(self.db_path)
 
         with db_manager.session() as session:
-            repo = self._get_repository(session)
-            feed = repo.get_by_id(feed_id)
+            feed_repo = self._get_repository(session)
+            category_repo = CategoryRepository(session)
+            feed = feed_repo.get_by_id(feed_id)
 
             if not feed:
                 return api_response(success=False, error="未找到订阅源", status=404)
 
-            category = session.query(CategoryModel).filter(
-                CategoryModel.id == category_id
-            ).first()
+            category = category_repo.get_by_id(category_id)
 
             if not category:
                 return api_response(success=False, error="未找到分类", status=404)
 
-            repo.remove_category(feed, category)
+            feed_repo.remove_category(feed, category)
 
             from spider_aggregation.web.serializers import category_to_dict
-            categories = repo.get_categories(feed)
+            categories = feed_repo.get_categories(feed)
             data = [category_to_dict(c) for c in categories]
 
         return api_response(

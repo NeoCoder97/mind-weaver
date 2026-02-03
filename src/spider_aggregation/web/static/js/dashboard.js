@@ -234,31 +234,44 @@ function refreshDashboard() {
 // ============================================================================
 
 async function loadSchedulerStatus() {
+    const indicator = document.getElementById('scheduler-indicator');
+    const statusText = document.getElementById('scheduler-status-text');
+    const btnStart = document.getElementById('btn-start-scheduler');
+    const btnStop = document.getElementById('btn-stop-scheduler');
+
     try {
         const response = await App.api.get('/api/scheduler/status');
         const status = response.data;
-
-        const indicator = document.getElementById('scheduler-indicator');
-        const statusText = document.getElementById('scheduler-status-text');
-        const btnStart = document.getElementById('btn-start-scheduler');
-        const btnStop = document.getElementById('btn-stop-scheduler');
 
         if (status.is_running) {
             indicator.className = 'status-indicator status-running';
             statusText.textContent = `Running (${status.enabled_feeds_count} feeds scheduled)`;
             btnStart.style.display = 'none';
             btnStop.style.display = 'inline-block';
+            btnStart.textContent = '启动调度器';
+            btnStart.disabled = false;
+            btnStop.textContent = '停止调度器';
+            btnStop.disabled = false;
         } else {
             indicator.className = 'status-indicator status-stopped';
             statusText.textContent = `Stopped (${status.enabled_feeds_count} feeds enabled)`;
             btnStart.style.display = 'inline-block';
             btnStop.style.display = 'none';
+            btnStart.textContent = '启动调度器';
+            btnStart.disabled = false;
+            btnStop.textContent = '停止调度器';
+            btnStop.disabled = false;
         }
 
         return status;
     } catch (error) {
         console.error('Failed to load scheduler status:', error);
-        document.getElementById('scheduler-status-text').textContent = 'Error loading status';
+        statusText.textContent = 'Error loading status';
+        // Reset button states on error
+        btnStart.textContent = '启动调度器';
+        btnStart.disabled = false;
+        btnStop.textContent = '停止调度器';
+        btnStop.disabled = false;
     }
 }
 

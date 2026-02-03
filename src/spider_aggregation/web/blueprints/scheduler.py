@@ -99,17 +99,17 @@ class SchedulerBlueprint:
                 total_feeds = feed_repo.count()
                 enabled_feeds = feed_repo.count(enabled_only=True)
 
-            jobs = scheduler.get_jobs()
+            jobs = scheduler.get_all_jobs()
 
             return api_response(
                 success=True,
                 data={
-                    "running": scheduler.is_running(),
-                    "total_feeds": total_feeds,
-                    "enabled_feeds": enabled_feeds,
+                    "is_running": scheduler.is_running(),
+                    "total_feeds_count": total_feeds,
+                    "enabled_feeds_count": enabled_feeds,
                     "jobs": [
                         {
-                            "id": job.id,
+                            "id": job.job_id,
                             "name": job.name,
                             "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
                         }
@@ -118,11 +118,22 @@ class SchedulerBlueprint:
                 }
             )
         else:
+            # Get feed counts even when scheduler is not initialized
+            from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+
+            db_manager = DatabaseManager(self.db_path)
+            with db_manager.session() as session:
+                feed_repo = FeedRepository(session)
+                total_feeds = feed_repo.count()
+                enabled_feeds = feed_repo.count(enabled_only=True)
+
             return api_response(
                 success=True,
                 data={
-                    "running": False,
-                    "message": "调度器未初始化"
+                    "is_running": False,
+                    "total_feeds_count": total_feeds,
+                    "enabled_feeds_count": enabled_feeds,
+                    "jobs": [],
                 }
             )
 
@@ -186,7 +197,7 @@ class SchedulerBlueprint:
             )
 
         try:
-            scheduler.shutdown(wait=False)
+            scheduler.stop(wait=False)
             logger.info("Scheduler stopped via API")
             return api_response(
                 success=True,
@@ -207,10 +218,12 @@ class SchedulerBlueprint:
             API response with fetch results
         """
         from spider_aggregation.storage.database import DatabaseManager
-        from spider_aggregation.core.fetcher import FeedFetcher
-        from spider_aggregation.core.parser import ContentParser
-        from spider_aggregation.core.deduplicator import Deduplicator
-        from spider_aggregation.core.filter_engine import FilterEngine
+        from spider_aggregation.core.services import (
+            FetcherService,
+            ParserService,
+            DeduplicatorService,
+            FilterService,
+        )
 
         logger = get_logger(__name__)
         db_manager = DatabaseManager(self.db_path)
@@ -224,10 +237,11 @@ class SchedulerBlueprint:
             entry_repo = EntryRepository(session)
             filter_rule_repo = FilterRuleRepository(session)
 
-            fetcher = FeedFetcher()
-            parser = ContentParser()
-            deduplicator = Deduplicator()
-            filter_engine = FilterEngine()
+            # Use Service Facades for all core operations
+            fetcher = FetcherService(session=session)
+            parser = ParserService()
+            deduplicator = DeduplicatorService(session=session)
+            filter_service = FilterService()
 
             # Get feeds to fetch
             feeds = feed_repo.get_feeds_to_fetch()
@@ -277,7 +291,7 @@ class SchedulerBlueprint:
                             continue
 
                         # Apply filter rules
-                        filter_result = filter_engine.apply(parsed, filter_rule_repo)
+                        filter_result = filter_service.apply(parsed, filter_rule_repo)
                         if not filter_result.allowed:
                             continue
 
@@ -288,9 +302,10 @@ class SchedulerBlueprint:
                         entries_created += 1
 
                     # Update fetch info
+                    from datetime import datetime
                     feed_repo.update_fetch_info(
                         feed,
-                        last_fetched_at=fetch_result.last_fetched_at,
+                        last_fetched_at=datetime.utcnow(),
                         reset_errors=True,
                         etag=fetch_result.etag,
                         last_modified=fetch_result.last_modified

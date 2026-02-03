@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from spider_aggregation.storage.database import DatabaseManager
 from spider_aggregation.storage.repositories.filter_rule_repo import FilterRuleRepository
-from spider_aggregation.models.entry import FilterRuleCreate
+from spider_aggregation.models.filter_rule import FilterRuleCreate
 from spider_aggregation.logger import get_logger
 
 logger = get_logger(__name__)

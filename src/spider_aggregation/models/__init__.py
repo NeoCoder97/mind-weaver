@@ -14,6 +14,8 @@ from spider_aggregation.models.entry import (
     EntryModel,
     EntryResponse,
     EntryUpdate,
+)
+from spider_aggregation.models.filter_rule import (
     FilterRuleModel,
     FilterRuleCreate,
     FilterRuleUpdate,

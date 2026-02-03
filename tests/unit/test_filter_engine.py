@@ -2,7 +2,7 @@
 
 import pytest
 from spider_aggregation.core.filter_engine import FilterEngine, FilterResult
-from spider_aggregation.models.entry import FilterRuleModel
+from spider_aggregation.models.filter_rule import FilterRuleModel
 
 
 @pytest.fixture

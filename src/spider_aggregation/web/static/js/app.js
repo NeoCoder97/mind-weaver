@@ -77,7 +77,7 @@ App.api = {
 // Toast Notification System
 // ============================================================================
 
-App.showToast = function(message, type = 'info', duration = 3000) {
+App.showToast = function(message, type = 'info', duration = 5000) {
     const container = document.getElementById('toast-container');
     if (!container) return;
 

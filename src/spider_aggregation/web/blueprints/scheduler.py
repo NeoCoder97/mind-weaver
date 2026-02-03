@@ -197,7 +197,7 @@ class SchedulerBlueprint:
             )
 
         try:
-            scheduler.shutdown(wait=False)
+            scheduler.stop(wait=False)
             logger.info("Scheduler stopped via API")
             return api_response(
                 success=True,

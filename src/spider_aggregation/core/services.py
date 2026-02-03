@@ -451,7 +451,7 @@ class ContentService:
         Returns:
             ContentFetchResult with full content
         """
-        return self._fetcher.fetch_content(url)
+        return self._fetcher.fetch(url)
 
 
 class KeywordService:
@@ -495,20 +495,20 @@ class SummarizerService:
 
     def __init__(
         self,
-        max_summary_length: Optional[int] = None,
-        extractive_sentences: Optional[int] = None,
+        method: Optional[str] = None,
+        max_sentences: Optional[int] = None,
     ):
         """Initialize summarizer service.
 
         Args:
-            max_summary_length: Maximum summary length in characters
-            extractive_sentences: Number of sentences for extractive summary
+            method: Summarization method (extractive or ai)
+            max_sentences: Maximum sentences in summary
         """
         from spider_aggregation.core.factories import create_summarizer
 
         self._summarizer = create_summarizer(
-            max_summary_length=max_summary_length,
-            extractive_sentences=extractive_sentences,
+            method=method,
+            max_sentences=max_sentences,
         )
         self._logger = get_logger(__name__)
 
@@ -630,19 +630,19 @@ def create_keyword_service(
 
 
 def create_summarizer_service(
-    max_summary_length: Optional[int] = None,
-    extractive_sentences: Optional[int] = None,
+    method: Optional[str] = None,
+    max_sentences: Optional[int] = None,
 ) -> SummarizerService:
     """Create a SummarizerService instance.
 
     Args:
-        max_summary_length: Maximum summary length
-        extractive_sentences: Number of sentences
+        method: Summarization method (extractive or ai)
+        max_sentences: Maximum sentences in summary
 
     Returns:
         Configured SummarizerService
     """
     return SummarizerService(
-        max_summary_length=max_summary_length,
-        extractive_sentences=extractive_sentences,
+        method=method,
+        max_sentences=max_sentences,
     )

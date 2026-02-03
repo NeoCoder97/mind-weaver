@@ -148,51 +148,63 @@ def create_keyword_extractor(
     """
     config = get_config()
     return KeywordExtractor(
-        max_keywords=max_keywords or config.content.max_keywords,
-        language=language or config.content.language,
+        max_keywords=max_keywords or config.keyword_extractor.max_keywords,
+        language=language or config.keyword_extractor.language,
     )
 
 
 def create_content_fetcher(
     timeout_seconds: Optional[int] = None,
     max_content_length: Optional[int] = None,
+    user_agent: Optional[str] = None,
 ) -> ContentFetcher:
     """Create a configured ContentFetcher instance.
 
     Args:
         timeout_seconds: Override request timeout
         max_content_length: Override max content length
+        user_agent: Override user agent
 
     Returns:
         Configured ContentFetcher instance
     """
     config = get_config()
     return ContentFetcher(
-        timeout_seconds=timeout_seconds or config.content.fetch_timeout,
-        max_content_length=max_content_length or config.content.max_content_length,
+        timeout_seconds=timeout_seconds or config.content_fetcher.timeout_seconds,
+        max_content_length=max_content_length or config.content_fetcher.max_content_length,
+        user_agent=user_agent or config.content_fetcher.user_agent,
     )
 
 
 def create_summarizer(
-    max_summary_length: Optional[int] = None,
-    extractive_sentences: Optional[int] = None,
-    ai_enabled: Optional[bool] = None,
+    method: Optional[str] = None,
+    max_sentences: Optional[int] = None,
+    min_sentence_length: Optional[int] = None,
+    ai_api_key: Optional[str] = None,
+    ai_model: Optional[str] = None,
+    ai_max_tokens: Optional[int] = None,
 ) -> Summarizer:
     """Create a configured Summarizer instance.
 
     Args:
-        max_summary_length: Override max summary length
-        extractive_sentences: Override number of sentences for extractive summary
-        ai_enabled: Override AI summarization flag
+        method: Summarization method (extractive or ai)
+        max_sentences: Maximum sentences in summary
+        min_sentence_length: Minimum sentence length
+        ai_api_key: Zhipu AI API key
+        ai_model: AI model name
+        ai_max_tokens: Maximum tokens for AI summary
 
     Returns:
         Configured Summarizer instance
     """
     config = get_config()
     return Summarizer(
-        max_summary_length=max_summary_length or config.content.max_summary_length,
-        extractive_sentences=extractive_sentences or config.content.extractive_sentences,
-        ai_enabled=ai_enabled if ai_enabled is not None else config.content.ai_summary_enabled,
+        method=method or config.summarizer.method,
+        max_sentences=max_sentences or config.summarizer.max_sentences,
+        min_sentence_length=min_sentence_length or config.summarizer.min_sentence_length,
+        ai_api_key=ai_api_key,
+        ai_model=ai_model or config.summarizer.ai_model,
+        ai_max_tokens=ai_max_tokens or config.summarizer.ai_max_tokens,
     )
 
 

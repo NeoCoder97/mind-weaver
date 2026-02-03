@@ -33,6 +33,7 @@ class FilterResult:
             excluded_by: Name of the rule that excluded the entry
         """
         self.passed = passed
+        self.allowed = passed  # Alias for compatibility
         self.matched_rules = matched_rules
         self.excluded_by = excluded_by
 

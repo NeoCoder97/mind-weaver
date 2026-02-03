@@ -84,13 +84,74 @@ class FetcherService:
         Returns:
             FetchResult with entries and metadata
         """
-        return self._fetcher.fetch_feed(
-            url=url,
-            feed_id=feed_id,
-            etag=etag,
-            last_modified=last_modified,
-            max_entries=max_entries,
-            recent_only=recent_only,
+        # If feed_id is provided, get the FeedModel from database
+        if feed_id is not None and self._fetcher.session is not None:
+            from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+
+            feed_repo = FeedRepository(self._fetcher.session)
+            feed = feed_repo.get_by_id(feed_id)
+            if feed:
+                return self._fetcher.fetch_feed(feed)
+
+        # Otherwise, fetch directly using HTTP client
+        from spider_aggregation.core.fetcher import FetchResult
+        import feedparser
+        import time
+
+        http_client = self._fetcher._http_client
+        start_time = time.time()
+
+        response = http_client.get(url, timeout=self._fetcher.timeout_seconds)
+
+        self._fetcher.stats.requests_made += 1
+
+        # Handle conditional requests
+        if response.status_code == 304:
+            return FetchResult(
+                success=True,
+                feed_id=feed_id or 0,
+                feed_url=url,
+                entries_count=0,
+                fetch_time_seconds=time.time() - start_time,
+                http_status=304,
+                etag=etag,
+                last_modified=last_modified,
+            )
+
+        if response.status_code != 200:
+            return FetchResult(
+                success=False,
+                feed_id=feed_id or 0,
+                feed_url=url,
+                fetch_time_seconds=time.time() - start_time,
+                http_status=response.status_code,
+                error=f"HTTP {response.status_code}",
+            )
+
+        # Parse feed
+        parsed = feedparser.parse(response.text)
+        entries = parsed.get("entries", [])
+
+        # Apply max entries limit
+        if max_entries > 0 and len(entries) > max_entries:
+            entries = entries[:max_entries]
+
+        # Get feed info
+        feed_info = {
+            "title": parsed.feed.get("title"),
+            "link": parsed.feed.get("link"),
+            "description": parsed.feed.get("description"),
+        }
+
+        return FetchResult(
+            success=True,
+            feed_id=feed_id or 0,
+            feed_url=url,
+            entries=entries,
+            entries_count=len(entries),
+            fetch_time_seconds=time.time() - start_time,
+            http_status=response.status_code,
+            feed_info=feed_info,
         )
 
     def fetch_feeds_to_fetch(self, session: Session) -> list:

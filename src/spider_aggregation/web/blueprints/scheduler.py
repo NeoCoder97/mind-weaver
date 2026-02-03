@@ -104,9 +104,9 @@ class SchedulerBlueprint:
             return api_response(
                 success=True,
                 data={
-                    "running": scheduler.is_running(),
-                    "total_feeds": total_feeds,
-                    "enabled_feeds": enabled_feeds,
+                    "is_running": scheduler.is_running(),
+                    "total_feeds_count": total_feeds,
+                    "enabled_feeds_count": enabled_feeds,
                     "jobs": [
                         {
                             "id": job.id,
@@ -118,11 +118,22 @@ class SchedulerBlueprint:
                 }
             )
         else:
+            # Get feed counts even when scheduler is not initialized
+            from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+
+            db_manager = DatabaseManager(self.db_path)
+            with db_manager.session() as session:
+                feed_repo = FeedRepository(session)
+                total_feeds = feed_repo.count()
+                enabled_feeds = feed_repo.count(enabled_only=True)
+
             return api_response(
                 success=True,
                 data={
-                    "running": False,
-                    "message": "调度器未初始化"
+                    "is_running": False,
+                    "total_feeds_count": total_feeds,
+                    "enabled_feeds_count": enabled_feeds,
+                    "jobs": [],
                 }
             )
 

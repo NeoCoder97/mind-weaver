@@ -275,13 +275,13 @@ class DeduplicatorService:
 
         Args:
             parsed_entry: Parsed entry data
-            entry_repo: EntryRepository instance
+            entry_repo: EntryRepository instance (unused, kept for API compatibility)
             feed_id: Feed ID
 
         Returns:
             DedupResult indicating if duplicate and reason
         """
-        return self._deduplicator.check_duplicate(parsed_entry, entry_repo, feed_id)
+        return self._deduplicator.check_duplicate(parsed_entry, feed_id)
 
 
 class FilterService:
@@ -311,7 +311,28 @@ class FilterService:
         Returns:
             FilterResult indicating if entry is allowed
         """
-        return self._engine.apply(parsed_entry, filter_rule_repo)
+        from spider_aggregation.core.filter_engine import FilterResult
+
+        # Load rules from repository
+        rules = filter_rule_repo.list(enabled_only=True)
+        if not rules:
+            return FilterResult(passed=True, matched_rules=[])
+
+        # Reload engine with current rules
+        self._engine = self._engine.__class__(rules=rules)
+
+        # Create a mock EntryModel-like object for filtering
+        # FilterEngine checks specific attributes, so we need to provide them
+        class MockEntry:
+            def __init__(self, data: dict):
+                self.title = data.get('title', '')
+                self.content = data.get('content', '') or data.get('summary', '')
+                self.link = data.get('link', '')
+                self.tags = data.get('tags_list', [])
+                self.language = data.get('language', '')
+
+        mock_entry = MockEntry(parsed_entry)
+        return self._engine.filter_entry(mock_entry)
 
     def reload_rules(self, rules: list) -> None:
         """Reload filter rules.

@@ -5,6 +5,7 @@
 - [开发环境设置](#开发环境设置)
 - [项目结构](#项目结构)
 - [开发工作流](#开发工作流)
+- [架构设计原则](#架构设计原则)
 - [测试指南](#测试指南)
 - [代码规范](#代码规范)
 - [调试技巧](#调试技巧)
@@ -47,7 +48,7 @@
 
 5. **验证安装**
    ```bash
-   uv run mind-weaver --version
+   uv run mind-weaver
    ```
 
 ### 开发依赖
@@ -57,7 +58,7 @@
 uv sync --dev
 
 # 或直接安装
-uv pip install pytest pytest-cov black ruff
+uv pip install pytest pytest-cov black ruff mypy
 ```
 
 ---
@@ -66,65 +67,140 @@ uv pip install pytest pytest-cov black ruff
 
 ```
 mind-weaver/
-├── src/spider_aggregation/      # 源代码
+├── src/spider_aggregation/          # 源代码
 │   ├── __init__.py
-│   ├── cli.py                   # CLI 入口
-│   ├── config.py                # 配置管理
-│   ├── logger.py                # 日志配置
+│   ├── __main__.py                  # 程序入口点
+│   ├── config.py                    # 配置管理
+│   ├── logger.py                    # 日志配置
 │   │
-│   ├── core/                    # 核心业务逻辑
+│   ├── core/                        # 核心业务逻辑
 │   │   ├── __init__.py
-│   │   ├── fetcher.py           # RSS 抓取器
-│   │   ├── parser.py            # 内容解析器
-│   │   ├── deduplicator.py      # 去重逻辑
-│   │   └── scheduler.py         # 任务调度器
-│   │
-│   ├── models/                  # 数据模型
-│   │   ├── __init__.py
-│   │   ├── feed.py              # 订阅源模型
-│   │   └── entry.py             # 条目模型
-│   │
-│   ├── storage/                 # 存储层
-│   │   ├── __init__.py
-│   │   ├── database.py          # 数据库连接
-│   │   └── repositories/        # 仓储模式
+│   │   ├── fetcher.py               # RSS 抓取器
+│   │   ├── parser.py                # 内容解析器
+│   │   ├── deduplicator.py          # 去重逻辑
+│   │   ├── scheduler.py             # 任务调度器
+│   │   ├── filter_engine.py         # 过滤引擎
+│   │   ├── content_fetcher.py       # 内容提取
+│   │   ├── keyword_extractor.py     # 关键词提取
+│   │   ├── summarizer.py            # 摘要生成
+│   │   ├── factories.py             # 工厂函数
+│   │   └── services/                # Service Layer (Facade)
 │   │       ├── __init__.py
-│   │       ├── feed_repo.py
-│   │       └── entry_repo.py
+│   │       ├── fetcher_service.py
+│   │       ├── parser_service.py
+│   │       ├── deduplicator_service.py
+│   │       ├── scheduler_service.py
+│   │       ├── filter_service.py
+│   │       ├── content_service.py
+│   │       ├── keyword_service.py
+│   │       └── summarizer_service.py
 │   │
-│   └── utils/                   # 工具函数
+│   ├── models/                      # 数据模型
+│   │   ├── __init__.py
+│   │   ├── base.py                  # ORM 基类
+│   │   ├── feed.py                  # 订阅源模型
+│   │   ├── entry.py                 # 条目模型
+│   │   ├── category.py              # 分类模型
+│   │   └── filter_rule.py           # 过滤规则模型
+│   │
+│   ├── storage/                     # 存储层
+│   │   ├── __init__.py
+│   │   ├── database.py              # 数据库管理
+│   │   ├── mixins.py                # 通用 Mixins
+│   │   ├── dialects/                # 数据库方言
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py              # 方言基类
+│   │   │   ├── sqlite.py            # SQLite 实现
+│   │   │   ├── postgresql.py        # PostgreSQL 实现
+│   │   │   └── mysql.py             # MySQL 实现
+│   │   └── repositories/            # Repository 模式
+│   │       ├── __init__.py
+│   │       ├── base.py              # Repository 基类
+│   │       ├── mixins.py            # Repository Mixins
+│   │       ├── feed_repo.py         # Feed Repository
+│   │       ├── entry_repo.py        # Entry Repository
+│   │       ├── category_repo.py     # Category Repository
+│   │       └── filter_rule_repo.py  # FilterRule Repository
+│   │
+│   ├── web/                         # Web 层
+│   │   ├── __init__.py
+│   │   ├── app.py                   # Flask 应用工厂
+│   │   ├── __main__.py              # Web 入口
+│   │   ├── serializers.py           # 序列化工具
+│   │   ├── scheduler_manager.py     # 调度器管理
+│   │   ├── blueprints/              # Blueprint 模块
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py              # CRUDBlueprint 基类
+│   │   │   ├── feeds.py             # Feed API
+│   │   │   ├── categories.py        # Category API
+│   │   │   ├── entries.py           # Entry API
+│   │   │   ├── filter_rules.py      # FilterRule API
+│   │   │   ├── scheduler.py         # Scheduler API
+│   │   │   └── system.py            # System API
+│   │   ├── templates/               # Jinja2 模板
+│   │   │   ├── base.html
+│   │   │   ├── dashboard.html
+│   │   │   ├── feeds.html
+│   │   │   ├── entries.html
+│   │   │   ├── categories.html
+│   │   │   ├── filter_rules.html
+│   │   │   └── settings.html
+│   │   └── static/                  # 静态资源
+│   │       ├── css/
+│   │       └── js/
+│   │
+│   └── utils/                       # 工具函数
 │       ├── __init__.py
-│       └── hash_utils.py        # 哈希工具
+│       └── hash_utils.py            # 哈希工具
 │
-├── tests/                       # 测试目录
-│   ├── conftest.py              # pytest 配置
-│   ├── unit/                    # 单元测试
+├── tests/                           # 测试目录
+│   ├── conftest.py                  # pytest 配置
+│   ├── unit/                        # 单元测试
 │   │   ├── test_fetcher.py
 │   │   ├── test_parser.py
 │   │   ├── test_deduplicator.py
 │   │   ├── test_scheduler.py
+│   │   ├── test_filter_engine.py
 │   │   └── test_database.py
-│   └── integration/             # 集成测试
+│   └── integration/                 # 集成测试
 │       └── test_real_feeds.py
 │
-├── scripts/                     # 脚本目录
-│   └── test_real_feed.py        # 真实 RSS 测试
+├── scripts/                         # 脚本目录
+│   ├── init_db.py                   # 数据库初始化
+│   ├── seed_feeds.py                # 种子订阅源
+│   ├── seed_filter_rules.py         # 种子过滤规则
+│   ├── test_real_feed.py            # 真实 RSS 测试
+│   ├── migrate_phase2.py            # Phase 2 迁移
+│   ├── migrate_categories.py        # 分类迁移
+│   └── migrate_feed_settings.py     # 订阅源设置迁移
 │
-├── docs/                        # 文档
-│   ├── architecture.md          # 架构设计
-│   ├── api-reference.md         # API 参考
-│   └── development-guide.md     # 开发指南（本文件）
+├── docs/                            # 文档
+│   ├── architecture.md              # 架构设计
+│   ├── api-reference.md             # API 参考
+│   ├── development-guide.md         # 开发指南（本文件）
+│   ├── alembic_guide.md             # Alembic 迁移指南
+│   └── ALEMBIC_QUICKREF.md          # Alembic 快速参考
 │
-├── config/                      # 配置文件
-│   └── config.yaml              # 主配置
+├── config/                          # 配置文件
+│   ├── config.yaml                  # 主配置
+│   ├── feeds.example.yaml           # 订阅源配置示例
+│   └── filters.example.yaml         # 过滤规则配置示例
 │
-├── data/                        # 数据目录
-│   ├── spider_aggregation.db    # SQLite 数据库
-│   └── logs/                    # 日志文件
+├── migrations/                      # Alembic 数据库迁移
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/                    # 迁移版本
 │
-├── pyproject.toml               # 项目配置
-├── .python-version              # Python 版本
-└── README.md                    # 项目说明
+├── data/                            # 数据目录
+│   └── spider_aggregation.db        # SQLite 数据库
+│
+├── logs/                            # 日志目录
+│   └── mind-weaver.log
+│
+├── pyproject.toml                   # 项目配置
+├── alembic.ini                      # Alembic 配置
+├── .python-version                  # Python 版本
+└── README.md                        # 项目说明
 ```
 
 ---
@@ -133,10 +209,26 @@ mind-weaver/
 
 ### 分支策略
 
-```bash
+```
 main          # 主分支，稳定版本
 ├── develop   # 开发分支
 └── feature/* # 功能分支
+```
+
+### 启动开发服务器
+
+```bash
+# 启动 Web 应用
+uv run mind-weaver
+
+# 指定 host 和 port
+export MIND_WEB_HOST=0.0.0.0
+export MIND_WEB_PORT=8000
+uv run mind-weaver
+
+# 启用调试模式
+export MIND_WEB_DEBUG=true
+uv run mind-weaver
 ```
 
 ### 开发新功能
@@ -150,6 +242,7 @@ main          # 主分支，稳定版本
    - 遵循代码规范
    - 添加类型注解
    - 编写测试
+   - 更新文档
 
 3. **运行测试**
    ```bash
@@ -170,6 +263,9 @@ main          # 主分支，稳定版本
 
    # 检查代码规范
    uv run ruff check src/ tests/
+
+   # 自动修复
+   uv run ruff check --fix src/ tests/
    ```
 
 5. **提交代码**
@@ -206,12 +302,85 @@ main          # 主分支，稳定版本
 
 **示例**：
 ```bash
-git commit -m "feat(fetcher): add ETag support for conditional requests
+git commit -m "feat(web): add category management API
 
-Implement ETag and Last-Modified header support to avoid
-fetching unchanged feeds.
+Add CRUD endpoints for feed categories with color and icon support.
+
+- POST /api/categories
+- GET /api/categories/{id}
+- PUT /api/categories/{id}
+- DELETE /api/categories/{id}
 
 Closes #123"
+```
+
+---
+
+## 架构设计原则
+
+### Service Layer (Facade 模式)
+
+Web 层必须通过 Service Layer 访问核心模块。
+
+```python
+# Correct - 使用 Service Facade
+from spider_aggregation.core.services import FetcherService
+
+fetcher = FetcherService(session=session)
+result = fetcher.fetch_feed(url=feed_url, feed_id=feed_id)
+
+# Wrong - 直接导入核心模块（禁止）
+from spider_aggregation.core.fetcher import FeedFetcher  # VIOLATION
+```
+
+**核心服务**：
+- `FetcherService` - 抓取服务
+- `ParserService` - 解析服务
+- `DeduplicatorService` - 去重服务
+- `SchedulerService` - 调度服务
+- `FilterService` - 过滤服务
+- `ContentService` - 内容提取服务
+- `KeywordService` - 关键词服务
+- `SummarizerService` - 摘要服务
+
+### Repository 模式
+
+数据访问通过 Repository 层：
+
+```python
+from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+from spider_aggregation.storage.repositories.entry_repo import EntryRepository
+
+# 使用 Repository
+with db_manager.session() as session:
+    feed_repo = FeedRepository(session)
+    feed = feed_repo.get_by_id(1)
+
+    category_repo = CategoryRepository(session)
+    categories = category_repo.list()
+```
+
+### Blueprint 模式
+
+Web API 使用 Flask Blueprint 模块化：
+
+```python
+from spider_aggregation.web.blueprints.base import CRUDBlueprint
+
+class CustomBlueprint(CRUDBlueprint):
+    """自定义 Blueprint."""
+
+    def __init__(self, db_path: str):
+        super().__init__(db_path, url_prefix="/api/custom")
+
+    def get_repository_class(self):
+        from spider_aggregation.storage.repositories.custom_repo import CustomRepository
+        return CustomRepository
+
+    def get_create_schema_class(self):
+        from spider_aggregation.models import CustomCreate
+        return CustomCreate
 ```
 
 ---
@@ -240,12 +409,6 @@ def test_normalize_title():
     # Test HTML entities
     title = parser._normalize_title("Hello &amp; World")
     assert title == "Hello & World"
-
-    # Test length limit
-    long_title = "A" * 1000
-    title = parser._normalize_title(long_title)
-    assert len(title) == 500  # Limited to 500 chars
-    assert title.endswith("...")
 ```
 
 #### 集成测试
@@ -255,31 +418,34 @@ def test_normalize_title():
 ```python
 # tests/integration/test_real_feeds.py
 @pytest.mark.integration
+@pytest.mark.slow
 def test_cloudflare_blog_rss_full_pipeline(db_session, feed_repo, entry_repo):
     """Test complete pipeline with real RSS feed."""
+    from spider_aggregation.core.services import (
+        FetcherService, ParserService, DeduplicatorService
+    )
+
     # 1. Create feed
     feed = feed_repo.create(FeedCreate(
         url="https://blog.cloudflare.com/zh-cn/rss",
         name="Cloudflare Blog"
     ))
 
-    # 2. Fetch
-    fetcher = create_fetcher(session=db_session)
-    result = fetcher.fetch_feed(feed)
+    # 2. Use Service Layer
+    fetcher = FetcherService(session=db_session)
+    parser = ParserService()
+    dedup = DeduplicatorService(session=db_session)
+
+    # 3. Fetch
+    result = fetcher.fetch_feed(url=feed.url, feed_id=feed.id)
     assert result.success is True
 
-    # 3. Parse
-    parser = create_parser()
-    dedup = create_deduplicator(session=db_session)
-
-    for raw_entry in result.entries:
-        parsed = parser.parse_entry(raw_entry)
-
-        # 4. Check duplicate
-        dup_result = dedup.check_duplicate(parsed, feed_id=feed.id)
-        if not dup_result.is_duplicate:
-            # 5. Store
-            entry_repo.create(EntryCreate(...))
+    # 4. Parse and store
+    for entry_data in result.entries:
+        parsed = parser.parse_entry(entry_data, feed_id=feed.id)
+        duplicate = dedup.check_duplicate(parsed, entry_repo, feed_id=feed.id)
+        if not duplicate.is_duplicate:
+            entry_repo.create(EntryCreate(**parsed))
 ```
 
 ### Fixtures
@@ -307,13 +473,24 @@ def db_session(db_manager: DatabaseManager) -> Session:
         yield session
 
 @pytest.fixture
-def feed(db_session: Session) -> FeedModel:
+def feed(db_session: Session):
     """Create test feed."""
+    from spider_aggregation.storage.repositories.feed_repo import FeedRepository
+    from spider_aggregation.models import FeedCreate
+
     repo = FeedRepository(db_session)
     return repo.create(FeedCreate(
         url="https://example.com/feed.xml",
         name="Test Feed"
     ))
+
+@pytest.fixture
+def category(db_session: Session):
+    """Create test category."""
+    from spider_aggregation.storage.repositories.category_repo import CategoryRepository
+
+    repo = CategoryRepository(db_session)
+    return repo.create(name="Test Category", color="#3B82F6")
 ```
 
 ### Mock 和 Patch
@@ -323,7 +500,7 @@ def feed(db_session: Session) -> FeedModel:
 ```python
 from unittest.mock import MagicMock, patch
 
-def test_fetch_with_mocked_response(feed):
+def test_fetch_with_mocked_response():
     """Test fetching with mocked HTTP response."""
     with patch("spider_aggregation.core.fetcher.httpx.Client") as mock_client:
         # Setup mock
@@ -334,9 +511,10 @@ def test_fetch_with_mocked_response(feed):
 
         mock_client.return_value.__enter__.return_value.get.return_value = mock_response
 
-        # Test
-        fetcher = FeedFetcher()
-        result = fetcher.fetch_feed(feed)
+        # Test using Service Layer
+        from spider_aggregation.core.services import FetcherService
+        fetcher = FetcherService(session=None)
+        result = fetcher.fetch_feed(url="https://example.com/feed")
 
         assert result.success is True
 ```
@@ -414,6 +592,7 @@ class MyClass:
 
 ```python
 from typing import Optional, List
+from spider_aggregation.models import FeedModel
 
 def fetch_feed(feed: FeedModel) -> FetchResult:
     """Fetch a feed.
@@ -477,6 +656,10 @@ def normalize_content(
 #### 错误处理
 
 ```python
+from spider_aggregation.logger import get_logger
+
+logger = get_logger(__name__)
+
 # 使用具体的异常
 try:
     result = fetcher.fetch_feed(feed)
@@ -584,21 +767,28 @@ def some_function():
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Flask",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "spider_aggregation.web.__main__",
+            "env": {
+                "FLASK_APP": "spider_aggregation.web.app",
+                "FLASK_DEBUG": "1",
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "args": [
+                "run",
+                "--no-debugger",
+                "--no-reload"
+            ],
+            "jinja": true,
+            "justMyCode": false
+        },
+        {
             "name": "Python: Current File",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "console": "integratedTerminal",
-            "env": {
-                "PYTHONPATH": "${workspaceFolder}/src"
-            }
-        },
-        {
-            "name": "Python: CLI",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "spider_aggregation.cli",
-            "args": ["fetch", "--all"],
             "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src"
@@ -619,6 +809,8 @@ sqlite3 data/spider_aggregation.db
 # 查询
 SELECT * FROM feeds;
 SELECT * FROM entries ORDER BY fetched_at DESC LIMIT 10;
+SELECT * FROM categories;
+SELECT * FROM filter_rules;
 
 # 退出
 .quit
@@ -634,28 +826,44 @@ SELECT * FROM entries ORDER BY fetched_at DESC LIMIT 10;
 
 ```python
 # 1. 创建自定义 Fetcher
+from spider_aggregation.core.fetcher import FeedFetcher
+
 class CustomFetcher(FeedFetcher):
     def fetch_feed(self, feed: FeedModel) -> FetchResult:
         # 自定义抓取逻辑
         pass
 
-# 2. 注册到 CLI
-@click.command()
-def add-custom-feed(url):
-    fetcher = CustomFetcher()
-    result = fetcher.fetch_feed(feed)
+# 2. 创建对应的 Service
+from spider_aggregation.core.services.fetcher_service import FetcherService
+
+class CustomFetcherService(FetcherService):
+    def __init__(self, session=None):
+        self.fetcher = CustomFetcher()
+
+# 3. 在 Blueprint 中使用
+@bp.route("/api/custom-fetch", methods=["POST"])
+def custom_fetch():
+    service = CustomFetcherService()
+    result = service.fetch_feed(url=request.json["url"])
+    return api_response(success=result.success, data=result)
 ```
 
 ### 如何自定义去重策略？
 
 ```python
+from spider_aggregation.core.deduplicator import Deduplicator
+
 class CustomDeduplicator(Deduplicator):
     def check_duplicate(self, entry, feed_id):
         # 自定义去重逻辑
         pass
 
-# 使用
-dedup = CustomDeduplicator(session=session)
+# 创建对应的 Service
+from spider_aggregation.core.services.deduplicator_service import DeduplicatorService
+
+class CustomDeduplicatorService(DeduplicatorService):
+    def __init__(self, session=None):
+        self.deduplicator = CustomDeduplicator()
 ```
 
 ### 如何添加新的字段到 Entry 模型？
@@ -674,53 +882,116 @@ class EntryCreate(BaseModel):
     new_field: Optional[str] = None
 ```
 
-3. 创建数据库迁移：
-```python
-# 使用 SQLAlchemy 手动迁移
-from sqlalchemy import text
+3. 使用 Alembic 创建迁移：
+```bash
+alembic revision --autogenerate -m "add new_field to entries"
+alembic upgrade head
+```
 
-with engine.connect() as conn:
-    conn.execute(text("ALTER TABLE entries ADD COLUMN new_field VARCHAR(500)"))
+### 如何添加新的 Blueprint？
+
+```python
+# 1. 在 web/blueprints/ 下创建新文件
+# web/blueprints/custom.py
+
+from spider_aggregation.web.blueprints.base import CRUDBlueprint
+
+class CustomBlueprint(CRUDBlueprint):
+    def __init__(self, db_path: str):
+        super().__init__(db_path, url_prefix="/api/custom")
+
+    def get_repository_class(self):
+        from spider_aggregation.storage.repositories.custom_repo import CustomRepository
+        return CustomRepository
+
+# 2. 在 app.py 中注册
+from spider_aggregation.web.blueprints.custom import CustomBlueprint
+
+custom_bp = CustomBlueprint(db_path)
+app.register_blueprint(custom_bp.blueprint)
 ```
 
 ### 如何处理大型订阅源？
 
 ```python
-# 配置更长的超时和更大的内容限制
-fetcher = FeedFetcher(
-    timeout_seconds=60,
-    max_content_length=50000
-)
+# 使用 Service Layer 配置
+from spider_aggregation.core.services import FetcherService
 
-# 使用更宽松的去重策略
-dedup = Deduplicator(
-    strategy=DedupStrategy.RELAXED
+fetcher = FetcherService(session=session)
+result = fetcher.fetch_feed(
+    url=feed_url,
+    feed_id=feed_id,
+    max_entries=50,  # 限制条目数
 )
 ```
 
 ### 如何优化数据库性能？
 
 ```python
-# 1. 添加索引
-CREATE INDEX idx_entries_published_at ON entries(published_at DESC);
+# 1. 添加索引（通过 Alembic 迁移）
+# migrations/versions/xxx_add_indexes.py
+
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade():
+    op.create_index('idx_entries_new_field', 'entries', ['new_field'])
 
 # 2. 使用批量操作
-entries = [EntryModel(**data) for data in entry_list]
-session.bulk_save_objects(entries)
+with db_manager.session() as session:
+    entries = [EntryModel(**data) for data in entry_list]
+    session.bulk_save_objects(entries)
 
 # 3. 定期清理
+from spider_aggregation.storage.repositories.entry_repo import EntryRepository
+
+entry_repo = EntryRepository(session)
 entry_repo.cleanup_old_entries(days=90)
 ```
 
-### 调试时如何避免真实 HTTP 请求？
+### 如何调试时避免真实 HTTP 请求？
 
 ```python
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-with patch("spider_aggregation.core.fetcher.httpx.Client"):
-    # 使用 mock 的 HTTP 客户端
-    fetcher = FeedFetcher()
-    result = fetcher.fetch_feed(feed)
+def test_with_mock():
+    with patch("spider_aggregation.core.fetcher.httpx.Client") as mock_client:
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.content = b"<rss><item><title>Test</title></item></rss>"
+        mock_response.headers = {}
+        mock_client.return_value.__enter__.return_value.get.return_value = mock_response
+
+        # 使用 Service Layer
+        from spider_aggregation.core.services import FetcherService
+        fetcher = FetcherService(session=None)
+        result = fetcher.fetch_feed(url="https://test.com/feed")
+
+        assert result.success is True
+```
+
+### 如何切换数据库类型？
+
+```bash
+# SQLite (默认)
+export MIND_DB_TYPE=sqlite
+export MIND_DB_PATH=data/spider_aggregation.db
+
+# PostgreSQL
+export MIND_DB_TYPE=postgresql
+export MIND_DB_HOST=localhost
+export MIND_DB_PORT=5432
+export MIND_DB_NAME=mindweaver
+export MIND_DB_USER=postgres
+export MIND_DB_PASSWORD=yourpassword
+
+# MySQL
+export MIND_DB_TYPE=mysql
+export MIND_DB_HOST=localhost
+export MIND_DB_PORT=3306
+export MIND_DB_NAME=mindweaver
+export MIND_DB_USER=root
+export MIND_DB_PASSWORD=yourpassword
 ```
 
 ---
@@ -741,6 +1012,8 @@ with patch("spider_aggregation.core.fetcher.httpx.Client"):
 - [ ] 添加了必要的文档
 - [ ] 更新了 CHANGELOG（如需要）
 - [ ] 所有提交信息遵循约定式提交规范
+- [ ] Service Layer 遵循 Facade 模式
+- [ ] Web 层不直接导入核心模块
 
 ---
 

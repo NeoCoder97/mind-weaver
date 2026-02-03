@@ -90,7 +90,7 @@ def migrate_to_phase2(db_path: str) -> bool:
 
     try:
         # Create filter_rules table
-        from spider_aggregation.models.entry import FilterRuleModel
+        from spider_aggregation.models.filter_rule import FilterRuleModel
 
         logger.info("Creating filter_rules table...")
         FilterRuleModel.metadata.create_all(manager.engine, tables=[FilterRuleModel.__table__])

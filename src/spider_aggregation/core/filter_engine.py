@@ -10,7 +10,8 @@ from functools import lru_cache
 from typing import Optional
 
 from spider_aggregation.logger import get_logger
-from spider_aggregation.models.entry import FilterRuleModel, EntryModel
+from spider_aggregation.models.filter_rule import FilterRuleModel
+from spider_aggregation.models.entry import EntryModel
 
 logger = get_logger(__name__)
 

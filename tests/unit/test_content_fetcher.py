@@ -125,7 +125,7 @@ def test_keyword_extractor_chinese():
 def test_filter_rule_repository(db_session):
     """Test FilterRuleRepository."""
     from spider_aggregation.storage.repositories.filter_rule_repo import FilterRuleRepository
-    from spider_aggregation.models.entry import FilterRuleCreate
+    from spider_aggregation.models.filter_rule import FilterRuleCreate
 
     repo = FilterRuleRepository(db_session)
 
@@ -162,7 +162,7 @@ def test_filter_rule_repository(db_session):
     assert count >= 1
 
     # Update
-    from spider_aggregation.models.entry import FilterRuleUpdate
+    from spider_aggregation.models.filter_rule import FilterRuleUpdate
 
     update_data = FilterRuleUpdate(priority=10)
     updated = repo.update(rule, update_data)
@@ -176,7 +176,7 @@ def test_filter_rule_repository(db_session):
 def test_filter_rule_get_enabled(db_session):
     """Test getting enabled rules ordered by priority."""
     from spider_aggregation.storage.repositories.filter_rule_repo import FilterRuleRepository
-    from spider_aggregation.models.entry import FilterRuleCreate
+    from spider_aggregation.models.filter_rule import FilterRuleCreate
 
     repo = FilterRuleRepository(db_session)
 

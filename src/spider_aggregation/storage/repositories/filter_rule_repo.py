@@ -4,14 +4,18 @@ Filter rule repository for database operations.
 
 from typing import Optional
 
-from sqlalchemy import Select, asc, desc
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
-from spider_aggregation.models.entry import FilterRuleModel, FilterRuleCreate, FilterRuleUpdate
+from spider_aggregation.models.filter_rule import FilterRuleModel, FilterRuleCreate, FilterRuleUpdate
+from spider_aggregation.storage.repositories.base import BaseRepository
 
 
-class FilterRuleRepository:
-    """Repository for FilterRule CRUD operations."""
+class FilterRuleRepository(BaseRepository[FilterRuleModel, FilterRuleCreate, FilterRuleUpdate]):
+    """Repository for FilterRule CRUD operations.
+
+    Inherits common CRUD operations from BaseRepository.
+    """
 
     def __init__(self, session: Session) -> None:
         """Initialize repository with a database session.
@@ -19,35 +23,7 @@ class FilterRuleRepository:
         Args:
             session: SQLAlchemy Session instance
         """
-        self.session = session
-
-    def create(self, rule_data: FilterRuleCreate) -> FilterRuleModel:
-        """Create a new filter rule.
-
-        Args:
-            rule_data: Filter rule creation data
-
-        Returns:
-            Created FilterRuleModel instance
-        """
-        rule = FilterRuleModel(**rule_data.model_dump())
-        self.session.add(rule)
-        self.session.flush()
-        self.session.refresh(rule)
-        return rule
-
-    def get_by_id(self, rule_id: int) -> Optional[FilterRuleModel]:
-        """Get a filter rule by ID.
-
-        Args:
-            rule_id: Filter rule ID
-
-        Returns:
-            FilterRuleModel instance or None
-        """
-        return self.session.query(FilterRuleModel).filter(
-            FilterRuleModel.id == rule_id
-        ).first()
+        super().__init__(session, FilterRuleModel)
 
     def get_by_name(self, name: str) -> Optional[FilterRuleModel]:
         """Get a filter rule by name.
@@ -86,11 +62,18 @@ class FilterRuleRepository:
         Returns:
             List of FilterRuleModel instances
         """
+        filters = {}
+        if enabled_only:
+            filters["enabled"] = True
+
         query = self.session.query(FilterRuleModel)
 
-        if enabled_only:
-            query = query.filter(FilterRuleModel.enabled == True)
+        # Apply simple filters
+        for key, value in filters.items():
+            if value is not None and hasattr(FilterRuleModel, key):
+                query = query.filter(getattr(FilterRuleModel, key) == value)
 
+        # Apply complex filters
         if rule_type is not None:
             query = query.filter(FilterRuleModel.rule_type == rule_type)
 
@@ -147,34 +130,6 @@ class FilterRuleRepository:
             .order_by(desc(FilterRuleModel.priority))
             .all()
         )
-
-    def update(self, rule: FilterRuleModel, rule_data: FilterRuleUpdate) -> FilterRuleModel:
-        """Update a filter rule.
-
-        Args:
-            rule: FilterRuleModel instance to update
-            rule_data: Filter rule update data
-
-        Returns:
-            Updated FilterRuleModel instance
-        """
-        update_data = rule_data.model_dump(exclude_unset=True)
-
-        for field, value in update_data.items():
-            setattr(rule, field, value)
-
-        self.session.flush()
-        self.session.refresh(rule)
-        return rule
-
-    def delete(self, rule: FilterRuleModel) -> None:
-        """Delete a filter rule.
-
-        Args:
-            rule: FilterRuleModel instance to delete
-        """
-        self.session.delete(rule)
-        self.session.flush()
 
     def delete_by_id(self, rule_id: int) -> bool:
         """Delete a filter rule by ID.

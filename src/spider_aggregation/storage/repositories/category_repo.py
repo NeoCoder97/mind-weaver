@@ -5,16 +5,20 @@ Category repository for database operations.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Select, asc, desc
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from spider_aggregation.models import CategoryModel
 from spider_aggregation.models.category import CategoryCreate, CategoryUpdate
 from spider_aggregation.models.feed import FeedModel
+from spider_aggregation.storage.repositories.base import BaseRepository
 
 
-class CategoryRepository:
-    """Repository for Category CRUD operations."""
+class CategoryRepository(BaseRepository[CategoryModel, CategoryCreate, CategoryUpdate]):
+    """Repository for Category CRUD operations.
+
+    Inherits common CRUD operations from BaseRepository.
+    """
 
     def __init__(self, session: Session) -> None:
         """Initialize repository with a database session.
@@ -22,7 +26,7 @@ class CategoryRepository:
         Args:
             session: SQLAlchemy Session instance
         """
-        self.session = session
+        super().__init__(session, CategoryModel)
 
     def create(
         self,
@@ -57,21 +61,6 @@ class CategoryRepository:
         self.session.refresh(category)
         return category
 
-    def get_by_id(self, category_id: int) -> Optional[CategoryModel]:
-        """Get a category by ID.
-
-        Args:
-            category_id: Category ID
-
-        Returns:
-            CategoryModel instance or None
-        """
-        return (
-            self.session.query(CategoryModel)
-            .filter(CategoryModel.id == category_id)
-            .first()
-        )
-
     def get_by_name(self, name: str) -> Optional[CategoryModel]:
         """Get a category by name.
 
@@ -98,12 +87,24 @@ class CategoryRepository:
         Returns:
             List of CategoryModel instances
         """
-        query = self.session.query(CategoryModel)
-
+        filters = {}
         if enabled_only:
-            query = query.filter(CategoryModel.enabled == True)
+            filters["enabled"] = True
+        return super().list(limit=limit, offset=offset, order_by="name", order_desc=False, **filters)
 
-        return query.order_by(CategoryModel.name).limit(limit).offset(offset).all()
+    def count(self, enabled_only: bool = False) -> int:
+        """Count categories.
+
+        Args:
+            enabled_only: Only count enabled categories
+
+        Returns:
+            Number of categories
+        """
+        filters = {}
+        if enabled_only:
+            filters["enabled"] = True
+        return super().count(**filters)
 
     def update(self, category: CategoryModel, **kwargs) -> CategoryModel:
         """Update a category.
@@ -122,15 +123,6 @@ class CategoryRepository:
         self.session.flush()
         self.session.refresh(category)
         return category
-
-    def delete(self, category: CategoryModel) -> None:
-        """Delete a category.
-
-        Args:
-            category: CategoryModel instance to delete
-        """
-        self.session.delete(category)
-        self.session.flush()
 
     def add_feed_to_category(
         self, feed: FeedModel, category: CategoryModel
@@ -233,19 +225,3 @@ class CategoryRepository:
         self.session.flush()
         self.session.refresh(feed)
         return feed
-
-    def count(self, enabled_only: bool = False) -> int:
-        """Count categories.
-
-        Args:
-            enabled_only: Only count enabled categories
-
-        Returns:
-            Number of categories
-        """
-        query = self.session.query(CategoryModel)
-
-        if enabled_only:
-            query = query.filter(CategoryModel.enabled == True)
-
-        return query.count()

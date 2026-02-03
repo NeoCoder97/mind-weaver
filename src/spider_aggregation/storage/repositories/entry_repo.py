@@ -2,18 +2,22 @@
 Entry repository for database operations.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import Select, asc, desc, func
+from sqlalchemy import asc, desc, func
 from sqlalchemy.orm import Session
 
 from spider_aggregation.models import EntryModel, FeedModel
 from spider_aggregation.models.entry import EntryCreate, EntryUpdate
+from spider_aggregation.storage.repositories.base import BaseRepository
 
 
-class EntryRepository:
-    """Repository for Entry CRUD operations."""
+class EntryRepository(BaseRepository[EntryModel, EntryCreate, EntryUpdate]):
+    """Repository for Entry CRUD operations.
+
+    Inherits common CRUD operations from BaseRepository.
+    """
 
     def __init__(self, session: Session) -> None:
         """Initialize repository with a database session.
@@ -21,7 +25,7 @@ class EntryRepository:
         Args:
             session: SQLAlchemy Session instance
         """
-        self.session = session
+        super().__init__(session, EntryModel)
 
     def create(self, entry_data: EntryCreate) -> EntryModel:
         """Create a new entry.
@@ -37,24 +41,12 @@ class EntryRepository:
         # Convert tags list to JSON string if provided
         if hasattr(entry_data, "tags") and entry_data.tags:
             import json
-
             entry.tags = json.dumps(entry_data.tags)
 
         self.session.add(entry)
         self.session.flush()
         self.session.refresh(entry)
         return entry
-
-    def get_by_id(self, entry_id: int) -> Optional[EntryModel]:
-        """Get an entry by ID.
-
-        Args:
-            entry_id: Entry ID
-
-        Returns:
-            EntryModel instance or None
-        """
-        return self.session.query(EntryModel).filter(EntryModel.id == entry_id).first()
 
     def get_by_link_hash(
         self, link_hash: str, feed_id: Optional[int] = None
@@ -181,19 +173,10 @@ class EntryRepository:
         Returns:
             List of EntryModel instances
         """
-        query = self.session.query(EntryModel)
-
+        filters = {}
         if feed_id is not None:
-            query = query.filter(EntryModel.feed_id == feed_id)
-
-        # Apply ordering
-        order_column = getattr(EntryModel, order_by, EntryModel.published_at)
-        if order_desc:
-            query = query.order_by(desc(order_column))
-        else:
-            query = query.order_by(asc(order_column))
-
-        return query.limit(limit).offset(offset).all()
+            filters["feed_id"] = feed_id
+        return super().list(limit=limit, offset=offset, order_by=order_by, order_desc=order_desc, **filters)
 
     def count(self, feed_id: Optional[int] = None) -> int:
         """Count entries.
@@ -204,12 +187,10 @@ class EntryRepository:
         Returns:
             Number of entries
         """
-        query = self.session.query(EntryModel)
-
+        filters = {}
         if feed_id is not None:
-            query = query.filter(EntryModel.feed_id == feed_id)
-
-        return query.count()
+            filters["feed_id"] = feed_id
+        return super().count(**filters)
 
     def update(self, entry: EntryModel, entry_data: EntryUpdate) -> EntryModel:
         """Update an entry.
@@ -226,7 +207,6 @@ class EntryRepository:
         # Handle tags separately
         if "tags" in update_data:
             import json
-
             if update_data["tags"] is not None:
                 update_data["tags"] = json.dumps(update_data["tags"])
 
@@ -236,15 +216,6 @@ class EntryRepository:
         self.session.flush()
         self.session.refresh(entry)
         return entry
-
-    def delete(self, entry: EntryModel) -> None:
-        """Delete an entry.
-
-        Args:
-            entry: EntryModel instance to delete
-        """
-        self.session.delete(entry)
-        self.session.flush()
 
     def delete_by_ids(self, entry_ids: list[int]) -> int:
         """Delete entries by IDs in bulk.
@@ -320,8 +291,6 @@ class EntryRepository:
         Returns:
             List of recent EntryModel instances
         """
-        from datetime import timedelta
-
         cutoff = datetime.utcnow() - timedelta(days=days)
 
         q = (
@@ -382,8 +351,6 @@ class EntryRepository:
         Returns:
             Number of entries deleted
         """
-        from datetime import timedelta
-
         cutoff = datetime.utcnow() - timedelta(days=days)
 
         q = self.session.query(EntryModel).filter(EntryModel.fetched_at < cutoff)
@@ -579,7 +546,6 @@ class EntryRepository:
         Returns:
             List of recent EntryModel instances
         """
-        from datetime import timedelta
         from spider_aggregation.models import feed_categories
 
         cutoff = datetime.utcnow() - timedelta(days=days)

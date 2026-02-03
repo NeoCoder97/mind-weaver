@@ -302,9 +302,10 @@ class SchedulerBlueprint:
                         entries_created += 1
 
                     # Update fetch info
+                    from datetime import datetime
                     feed_repo.update_fetch_info(
                         feed,
-                        last_fetched_at=fetch_result.last_fetched_at,
+                        last_fetched_at=datetime.utcnow(),
                         reset_errors=True,
                         etag=fetch_result.etag,
                         last_modified=fetch_result.last_modified

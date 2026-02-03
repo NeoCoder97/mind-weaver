@@ -148,7 +148,6 @@ class FeedBlueprint(CRUDBlueprint):
                 etag=feed.etag,
                 last_modified=feed.last_modified,
                 max_entries=feed.max_entries_per_fetch,
-                recent_only=feed.fetch_only_recent,
             )
 
             if not fetch_result.success:

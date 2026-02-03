@@ -249,10 +249,8 @@ class ParserService:
         parsed["link_hash"] = compute_link_hash(parsed.get("link")) or ""
         parsed["content_hash"] = compute_content_hash(parsed.get("content"))
 
-        # Convert tags list to JSON string for database storage
-        if "tags" in parsed and parsed["tags"]:
-            import json
-            parsed["tags"] = json.dumps(parsed["tags"])
+        # Keep tags as list - EntryRepository will handle JSON serialization
+        # The ContentParser returns tags as a list, which is what EntryCreate expects
 
         return parsed
 

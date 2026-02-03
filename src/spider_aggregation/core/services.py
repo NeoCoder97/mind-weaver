@@ -326,7 +326,8 @@ class FilterService:
         class MockEntry:
             def __init__(self, data: dict):
                 self.title = data.get('title', '')
-                self.content = data.get('content', '') or data.get('summary', '')
+                self.content = data.get('content', '')
+                self.summary = data.get('summary', '')
                 self.link = data.get('link', '')
                 self.tags = data.get('tags_list', [])
                 self.language = data.get('language', '')

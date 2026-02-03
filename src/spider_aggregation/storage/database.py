@@ -127,20 +127,69 @@ def get_session() -> Session:
     return session_factory()
 
 
-def init_db(drop_all: bool = False) -> None:
+def init_db(drop_all: bool = False, use_migrations: bool = True) -> None:
     """Initialize the database.
 
-    Creates all tables if they don't exist.
-
     Args:
-        drop_all: If True, drop all tables before creating them
+        drop_all: If True, drop all tables before creating them (DANGEROUS!)
+        use_migrations: If True, use Alembic migrations instead of create_all()
+                       Recommended for production. Set to False for testing only.
+
+    Note:
+        For production use, always use Alembic migrations:
+        - Fresh install: alembic upgrade head
+        - Existing DB: alembic stamp head
     """
+    from spider_aggregation.logger import get_logger
+    logger = get_logger(__name__)
+
     engine = get_engine()
 
+    # For testing or development, allow drop_all + create_all
     if drop_all:
+        logger.warning("Dropping all tables - data will be lost!")
         Base.metadata.drop_all(bind=engine)
+        # After dropping, we need to run migrations to recreate
+        use_migrations = True
 
-    Base.metadata.create_all(bind=engine)
+    if use_migrations:
+        # Check if alembic_version table exists
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(engine)
+        has_alembic = 'alembic_version' in inspector.get_table_names()
+
+        if not has_alembic and not drop_all:
+            # Fresh database with existing tables (created by old init_db)
+            # Stamp it as current migration
+            logger.info("Stamping database with current migration version")
+            from alembic.config import Config
+            from alembic import command
+
+            alembic_cfg = Config("alembic.ini")
+            try:
+                command.stamp(alembic_cfg, "head")
+                logger.info("Database stamped successfully")
+            except Exception as e:
+                logger.warning(f"Could not stamp database: {e}")
+        elif not has_alembic:
+            # Completely fresh database (no tables at all)
+            logger.info("Running database migrations")
+            from alembic.config import Config
+            from alembic import command
+
+            alembic_cfg = Config("alembic.ini")
+            try:
+                command.upgrade(alembic_cfg, "head")
+                logger.info("Database migrations completed")
+            except Exception as e:
+                logger.warning(f"Could not run migrations: {e}, falling back to create_all")
+                Base.metadata.create_all(bind=engine)
+        # else: alembic_version table exists, migrations are being managed by alembic CLI
+    else:
+        # Legacy behavior - directly create tables (not recommended for production)
+        logger.warning("Using direct table creation (not recommended for production)")
+        Base.metadata.create_all(bind=engine)
 
 
 def close_db() -> None:

@@ -20,6 +20,7 @@ dependencies = [
     "jieba>=0.42.1",
     "nltk>=3.8.1",
     "flask>=3.0.0",
+    "alembic>=1.18.3",
 ]
 
 [project.optional-dependencies]

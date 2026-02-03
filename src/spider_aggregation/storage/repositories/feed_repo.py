@@ -5,15 +5,21 @@ Feed repository for database operations.
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Select, asc, desc
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from spider_aggregation.models import FeedModel, CategoryModel
 from spider_aggregation.models.feed import FeedCreate, FeedUpdate
+from spider_aggregation.storage.repositories.base import BaseRepository
+from spider_aggregation.storage.repositories.mixins import CategoryQueryMixin
 
 
-class FeedRepository:
-    """Repository for Feed CRUD operations."""
+class FeedRepository(BaseRepository[FeedModel, FeedCreate, FeedUpdate], CategoryQueryMixin[FeedModel]):
+    """Repository for Feed CRUD operations.
+
+    Inherits common CRUD operations from BaseRepository and category-based
+    query methods from CategoryQueryMixin.
+    """
 
     def __init__(self, session: Session) -> None:
         """Initialize repository with a database session.
@@ -21,33 +27,7 @@ class FeedRepository:
         Args:
             session: SQLAlchemy Session instance
         """
-        self.session = session
-
-    def create(self, feed_data: FeedCreate) -> FeedModel:
-        """Create a new feed.
-
-        Args:
-            feed_data: Feed creation data
-
-        Returns:
-            Created FeedModel instance
-        """
-        feed = FeedModel(**feed_data.model_dump())
-        self.session.add(feed)
-        self.session.flush()
-        self.session.refresh(feed)
-        return feed
-
-    def get_by_id(self, feed_id: int) -> Optional[FeedModel]:
-        """Get a feed by ID.
-
-        Args:
-            feed_id: Feed ID
-
-        Returns:
-            FeedModel instance or None
-        """
-        return self.session.query(FeedModel).filter(FeedModel.id == feed_id).first()
+        super().__init__(session, FeedModel)
 
     def get_by_url(self, url: str) -> Optional[FeedModel]:
         """Get a feed by URL.
@@ -80,19 +60,10 @@ class FeedRepository:
         Returns:
             List of FeedModel instances
         """
-        query = self.session.query(FeedModel)
-
+        filters = {}
         if enabled_only:
-            query = query.filter(FeedModel.enabled == True)
-
-        # Apply ordering
-        order_column = getattr(FeedModel, order_by, FeedModel.created_at)
-        if order_desc:
-            query = query.order_by(desc(order_column))
-        else:
-            query = query.order_by(asc(order_column))
-
-        return query.limit(limit).offset(offset).all()
+            filters["enabled"] = True
+        return super().list(limit=limit, offset=offset, order_by=order_by, order_desc=order_desc, **filters)
 
     def count(self, enabled_only: bool = False) -> int:
         """Count feeds.
@@ -103,39 +74,10 @@ class FeedRepository:
         Returns:
             Number of feeds
         """
-        query = self.session.query(FeedModel)
+        filters = {}
         if enabled_only:
-            query = query.filter(FeedModel.enabled == True)
-        return query.count()
-
-    def update(self, feed: FeedModel, feed_data: FeedUpdate) -> FeedModel:
-        """Update a feed.
-
-        Args:
-            feed: FeedModel instance to update
-            feed_data: Feed update data
-
-        Returns:
-            Updated FeedModel instance
-        """
-        update_data = feed_data.model_dump(exclude_unset=True)
-
-        for field, value in update_data.items():
-            setattr(feed, field, value)
-
-        feed.updated_at = datetime.utcnow()
-        self.session.flush()
-        self.session.refresh(feed)
-        return feed
-
-    def delete(self, feed: FeedModel) -> None:
-        """Delete a feed.
-
-        Args:
-            feed: FeedModel instance to delete
-        """
-        self.session.delete(feed)
-        self.session.flush()
+            filters["enabled"] = True
+        return super().count(**filters)
 
     def update_fetch_info(
         self,
@@ -250,127 +192,7 @@ class FeedRepository:
         self.session.refresh(feed)
         return feed
 
-    # Category-related methods
-
-    def get_by_category(
-        self,
-        category_id: int,
-        enabled_only: bool = False,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[FeedModel]:
-        """Get feeds by category ID.
-
-        Args:
-            category_id: Category ID
-            enabled_only: Only return enabled feeds
-            limit: Maximum number of results
-            offset: Number of results to skip
-
-        Returns:
-            List of FeedModel instances
-        """
-        from spider_aggregation.models import feed_categories
-
-        query = (
-            self.session.query(FeedModel)
-            .join(feed_categories)
-            .filter(feed_categories.c.category_id == category_id)
-        )
-
-        if enabled_only:
-            query = query.filter(FeedModel.enabled == True)
-
-        return query.order_by(desc(FeedModel.created_at)).limit(limit).offset(offset).all()
-
-    def get_by_category_name(
-        self,
-        category_name: str,
-        enabled_only: bool = False,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[FeedModel]:
-        """Get feeds by category name.
-
-        Args:
-            category_name: Category name
-            enabled_only: Only return enabled feeds
-            limit: Maximum number of results
-            offset: Number of results to skip
-
-        Returns:
-            List of FeedModel instances
-        """
-        from spider_aggregation.models import CategoryModel, feed_categories
-
-        query = (
-            self.session.query(FeedModel)
-            .join(feed_categories)
-            .join(CategoryModel)
-            .filter(CategoryModel.name == category_name)
-        )
-
-        if enabled_only:
-            query = query.filter(FeedModel.enabled == True)
-
-        return query.order_by(desc(FeedModel.created_at)).limit(limit).offset(offset).all()
-
-    def get_by_categories(
-        self,
-        category_ids: list[int],
-        enabled_only: bool = False,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[FeedModel]:
-        """Get feeds by multiple category IDs (feeds in any of the categories).
-
-        Args:
-            category_ids: List of category IDs
-            enabled_only: Only return enabled feeds
-            limit: Maximum number of results
-            offset: Number of results to skip
-
-        Returns:
-            List of FeedModel instances
-        """
-        from spider_aggregation.models import feed_categories
-
-        if not category_ids:
-            return []
-
-        query = (
-            self.session.query(FeedModel)
-            .join(feed_categories)
-            .filter(feed_categories.c.category_id.in_(category_ids))
-        )
-
-        if enabled_only:
-            query = query.filter(FeedModel.enabled == True)
-
-        return query.order_by(desc(FeedModel.created_at)).limit(limit).offset(offset).all()
-
-    def count_by_category(self, category_id: int, enabled_only: bool = False) -> int:
-        """Count feeds by category ID.
-
-        Args:
-            category_id: Category ID
-            enabled_only: Only count enabled feeds
-
-        Returns:
-            Number of feeds in the category
-        """
-        from spider_aggregation.models import feed_categories
-
-        query = (
-            self.session.query(FeedModel)
-            .join(feed_categories)
-            .filter(feed_categories.c.category_id == category_id)
-        )
-
-        if enabled_only:
-            query = query.filter(FeedModel.enabled == True)
-
-        return query.count()
+    # Category relationship methods
 
     def get_categories(self, feed: FeedModel) -> list[CategoryModel]:
         """Get all categories for a feed.
@@ -399,8 +221,6 @@ class FeedRepository:
         Returns:
             Updated FeedModel instance
         """
-        from spider_aggregation.models import CategoryModel
-
         # Fetch all category objects
         categories = (
             self.session.query(CategoryModel)

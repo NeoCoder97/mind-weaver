@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Index
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Index, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from spider_aggregation.models.feed import Base, FeedModel
@@ -32,9 +32,7 @@ class EntryModel(Base):
     )
 
     # Relationship to Feed
-    feed: Mapped["FeedModel"] = relationship(
-        "FeedModel", back_populates="entries"
-    )
+    feed: Mapped["FeedModel"] = relationship("FeedModel", back_populates="entries")
 
     # Basic entry fields
     title: Mapped[str] = mapped_column(String(1000), nullable=False)
@@ -47,7 +45,9 @@ class EntryModel(Base):
 
     # Timestamps
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
-    fetched_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False, index=True
+    )
 
     # Deduplication fields
     title_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -58,6 +58,7 @@ class EntryModel(Base):
     tags: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON string of tags
     language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     reading_time_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
 
     def __repr__(self) -> str:
         return f"<EntryModel(id={self.id}, title='{self.title}', link='{self.link}')>"
@@ -78,6 +79,7 @@ class EntryBase(BaseModel):
     tags: Optional[list[str]] = Field(None, description="Entry tags")
     language: Optional[str] = Field(None, max_length=10, description="Content language")
     reading_time_seconds: Optional[int] = Field(None, ge=0, description="Estimated reading time")
+    enabled: bool = Field(True, description="Whether the entry is enabled (visible/active)")
 
 
 class EntryCreate(EntryBase):
@@ -86,7 +88,9 @@ class EntryCreate(EntryBase):
     feed_id: int = Field(..., description="Feed ID")
     title_hash: str = Field(..., max_length=64, description="Hash of title for deduplication")
     link_hash: str = Field(..., max_length=64, description="Hash of link for deduplication")
-    content_hash: Optional[str] = Field(None, max_length=64, description="Hash of content for deduplication")
+    content_hash: Optional[str] = Field(
+        None, max_length=64, description="Hash of content for deduplication"
+    )
 
 
 class EntryUpdate(BaseModel):
@@ -98,6 +102,7 @@ class EntryUpdate(BaseModel):
     tags: Optional[list[str]] = None
     language: Optional[str] = Field(None, max_length=10)
     reading_time_seconds: Optional[int] = Field(None, ge=0)
+    enabled: Optional[bool] = Field(None, description="Enable or disable entry")
 
 
 class EntryResponse(EntryBase):

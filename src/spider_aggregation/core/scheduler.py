@@ -90,12 +90,8 @@ class FeedScheduler:
         self._job_errors: dict[str, str] = {}
 
         # Add event listeners
-        self.scheduler.add_listener(
-            self._on_job_executed, EVENT_JOB_EXECUTED
-        )
-        self.scheduler.add_listener(
-            self._on_job_error, EVENT_JOB_ERROR
-        )
+        self.scheduler.add_listener(self._on_job_executed, EVENT_JOB_EXECUTED)
+        self.scheduler.add_listener(self._on_job_error, EVENT_JOB_ERROR)
 
     def start(self) -> None:
         """Start the scheduler."""
@@ -287,16 +283,18 @@ class FeedScheduler:
         """
         jobs = []
         for job in self.scheduler.get_jobs():
-            jobs.append(JobStatus(
-                job_id=job.id,
-                name=job.name,
-                next_run_time=job.next_run_time,
-                last_run_time=None,
-                is_active=not (job.next_run_time is None),
-                trigger=str(job.trigger),
-                last_result=self._job_results.get(job.id),
-                last_error=self._job_errors.get(job.id),
-            ))
+            jobs.append(
+                JobStatus(
+                    job_id=job.id,
+                    name=job.name,
+                    next_run_time=job.next_run_time,
+                    last_run_time=None,
+                    is_active=not (job.next_run_time is None),
+                    trigger=str(job.trigger),
+                    last_result=self._job_results.get(job.id),
+                    last_error=self._job_errors.get(job.id),
+                )
+            )
         return jobs
 
     def get_stats(self) -> SchedulerStats:

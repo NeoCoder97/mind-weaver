@@ -2,154 +2,266 @@
 
 {% block title %}文章列表 - MindWeaver{% endblock %}
 
-{% block content %}
-<div class="page-header">
-    <h2>文章列表</h2>
-    <div class="stats">
-        <span>总计: {{ total }}</span>
-    </div>
+{% block header_actions %}
+<div class="search-box">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+    </svg>
+    <input type="text" id="search-input" placeholder="搜索文章..." value="{{ search_query }}">
 </div>
-
-<div class="filters">
-    <form method="get" class="filter-form">
-        <select name="feed_id" class="filter-select">
-            <option value="">全部订阅源</option>
-            {% for feed in feeds %}
-            <option value="{{ feed.id }}" {% if feed_id == feed.id %}selected{% endif %}>
-                {{ feed.name }}
-            </option>
-            {% endfor %}
-        </select>
-
-        <input type="text" name="q" placeholder="搜索..." value="{{ search_query }}" class="search-input">
-
-        <button type="submit" class="btn btn-primary">筛选</button>
-        {% if feed_id or search_query %}
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">清除</a>
-        {% endif %}
-    </form>
-</div>
-
-<!-- Batch Operations Toolbar -->
-<div class="batch-toolbar">
-    <label class="batch-toolbar-label">
-        <input type="checkbox" onchange="toggleSelectAll(this)">
-        全选
-    </label>
-    <div class="batch-actions">
-        <button type="button" class="btn btn-small btn-secondary" onclick="batchFetchContent()" title="为选中的文章提取完整内容">
-            📄 提取内容
-        </button>
-        <button type="button" class="btn btn-small btn-secondary" onclick="batchExtractKeywords()" title="为选中的文章提取关键词">
-            🏷️ 提取关键词
-        </button>
-        <button type="button" class="btn btn-small btn-secondary" onclick="batchSummarize()" title="为选中的文章生成摘要">
-            📝 生成摘要
-        </button>
-        <button type="button" class="btn btn-small btn-danger" onclick="batchDeleteEntries()" title="删除选中的文章">
-            🗑️ 删除
-        </button>
-    </div>
-</div>
-
-<div class="entries-list">
-    {% for entry in entries %}
-    <article class="entry-card">
-        <div style="display: flex; gap: 0.75rem; align-items: flex-start;">
-            <input type="checkbox" class="entry-checkbox" value="{{ entry.id }}" style="margin-top: 0.5rem;">
-            <div style="flex: 1;">
-                <h3 class="entry-title">
-                    <a href="{{ url_for('entry_detail', entry_id=entry.id) }}">{{ entry.title }}</a>
-                </h3>
-                <div class="entry-meta">
-                    {% if entry.author %}
-                    <span class="entry-author">{{ entry.author }}</span>
-                    {% endif %}
-                    {% if entry.published_at %}
-                    <span class="entry-date">{{ entry.published_at|format_datetime }}</span>
-                    {% endif %}
-                    {% if entry.language %}
-                    <span class="badge badge-secondary">{{ entry.language.upper() }}</span>
-                    {% endif %}
-                </div>
-                {% if entry.summary %}
-                <p class="entry-summary">{{ entry.summary[:300] }}{% if entry.summary|length > 300 %}...{% endif %}</p>
-                {% elif entry.content %}
-                <p class="entry-summary">{{ entry.content[:300] }}{% if entry.content|length > 300 %}...{% endif %}</p>
-                {% endif %}
-                {% if entry.tags_list %}
-                <div class="entry-tags">
-                    {% for tag in entry.tags_list[:5] %}
-                    <span class="tag">{{ tag }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                <div class="entry-actions">
-                    <a href="{{ entry.link }}" target="_blank" rel="noopener" class="btn btn-small">查看原文</a>
-                    <a href="{{ url_for('entry_detail', entry_id=entry.id) }}" class="btn btn-small btn-secondary">详情</a>
-                </div>
-            </div>
-        </div>
-    </article>
-    {% else %}
-    <div class="empty-state">
-        <p>暂无文章</p>
-    </div>
-    {% endfor %}
-</div>
-
-{% if total > page_size %}
-<div class="pagination">
-    {% if page > 1 %}
-    <a href="?page={{ page - 1 }}&feed_id={{ feed_id or '' }}&q={{ search_query }}" class="btn">上一页</a>
-    {% endif %}
-
-    <span class="pagination-info">
-        第 {{ page }} / {{ total // page_size + (1 if total % page_size else 0) }} 页
-        (共 {{ total }} 条)
-    </span>
-
-    {% set total_pages = total // page_size + (1 if total % page_size else 0) %}
-    {% set max_pages = 7 %}
-    {% set start_page = [1, page - 3]|max %}
-    {% set end_page = [total_pages, page + 3]|min %}
-
-    {% if start_page > 1 %}
-    <a href="?page=1&feed_id={{ feed_id or '' }}&q={{ search_query }}" class="btn btn-small">1</a>
-    {% if start_page > 2 %}
-    <span class="pagination-ellipsis">...</span>
-    {% endif %}
-    {% endif %}
-
-    {% for p in range(start_page, end_page + 1) %}
-    {% if p == page %}
-    <span class="btn btn-small btn-primary">{{ p }}</span>
-    {% else %}
-    <a href="?page={{ p }}&feed_id={{ feed_id or '' }}&q={{ search_query }}" class="btn btn-small">{{ p }}</a>
-    {% endif %}
-    {% endfor %}
-
-    {% if end_page < total_pages %}
-    {% if end_page < total_pages - 1 %}
-    <span class="pagination-ellipsis">...</span>
-    {% endif %}
-    <a href="?page={{ total_pages }}&feed_id={{ feed_id or '' }}&q={{ search_query }}" class="btn btn-small">{{ total_pages }}</a>
-    {% endif %}
-
-    {% if page * page_size < total %}
-    <a href="?page={{ page + 1 }}&feed_id={{ feed_id or '' }}&q={{ search_query }}" class="btn">下一页</a>
-    {% endif %}
-
-    <form method="get" class="pagination-jump" style="display: inline; margin-left: 1rem;">
-        <input type="hidden" name="feed_id" value="{{ feed_id or '' }}">
-        <input type="hidden" name="q" value="{{ search_query }}">
-        <input type="number" name="page" min="1" max="{{ total // page_size + (1 if total % page_size else 0) }}" placeholder="页码" class="form-control" style="width: 60px; display: inline;">
-        <button type="submit" class="btn btn-small">跳转</button>
-    </form>
-</div>
-{% endif %}
 {% endblock %}
 
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+{% block content %}
+<div class="page">
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <div class="toolbar-group" id="batch-actions" style="display: none;">
+                <span class="selected-count">已选 <span id="selected-count">0</span> 项</span>
+                <button class="btn btn-ghost btn-sm" id="batch-mark-read">标记已读</button>
+                <button class="btn btn-ghost btn-sm" id="batch-delete">删除</button>
+            </div>
+            <div class="toolbar-group">
+                <select id="feed-filter">
+                    <option value="">所有订阅源</option>
+                    {% for feed in feeds %}
+                    <option value="{{ feed.id }}" {% if feed_id == feed.id %}selected{% endif %}>{{ feed.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="toolbar-right">
+            <button class="btn btn-secondary btn-sm" id="refresh-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+                刷新
+            </button>
+        </div>
+    </div>
+
+    <div class="page-content">
+        <div id="entries-table"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize entries table
+const entriesTable = new DataTable({
+    container: '#entries-table',
+    dataUrl: '/api/entries',
+    columns: [
+        {
+            key: 'title',
+            label: '标题',
+            render: (row) => {
+                const readClass = row.enabled ? 'font-weight: 500;' : '';
+                const hasContent = row.full_content ? '<span class="badge badge-success" style="margin-left: 8px;">全文</span>' : '';
+                return `
+                    <div class="cell-title" style="${readClass}">
+                        <a href="/entry/${row.id}">${row.title || '(无标题)'}</a>
+                        ${hasContent}
+                    </div>
+                `;
+            }
+        },
+        {
+            key: 'feed_name',
+            label: '来源',
+            render: (row) => {
+                return `<span class="text-secondary">${row.feed_name || '-'}</span>`;
+            }
+        },
+        {
+            key: 'published_at',
+            label: '发布时间',
+            type: 'datetime',
+            render: (row) => {
+                return new Date(row.published_at).toLocaleString('zh-CN', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        },
+        {
+            key: 'language',
+            label: '语言',
+            render: (row) => {
+                const langMap = { 'zh': '中文', 'en': '英文', 'ja': '日文', 'unknown': '-' };
+                return langMap[row.language] || row.language || '-';
+            }
+        },
+        {
+            key: 'reading_time_seconds',
+            label: '时长',
+            render: (row) => {
+                if (!row.reading_time_seconds) return '-';
+                const minutes = Math.ceil(row.reading_time_seconds / 60);
+                return minutes > 0 ? `${minutes} min` : '< 1 min';
+            }
+        },
+        {
+            key: 'tags',
+            label: '标签',
+            render: (row) => {
+                if (!row.tags) return '-';
+                try {
+                    const tags = JSON.parse(row.tags);
+                    const displayTags = tags.slice(0, 3);
+                    const extra = tags.length > 3 ? `+${tags.length - 3}` : '';
+                    return displayTags.map(tag => `<span class="badge badge-default" style="margin-right: 4px; font-size: 0.7rem;">${tag}</span>`).join('') +
+                           (extra ? `<span class="text-muted" style="font-size: 0.7rem;">${extra}</span>` : '');
+                } catch {
+                    return '-';
+                }
+            }
+        },
+        {
+            key: 'enabled',
+            label: '状态',
+            type: 'boolean',
+            render: (row) => {
+                return row.enabled ?
+                    '<span class="badge badge-success" style="font-size: 0.75rem;">未读</span>' :
+                    '<span class="badge badge-default" style="font-size: 0.75rem;">已读</span>';
+            }
+        }
+    ],
+    rowActions: (row) => [
+        {
+            name: 'toggle-read',
+            label: row.enabled ? '标记已读' : '标记未读',
+            icon: row.enabled ?
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' :
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>',
+            onClick: `toggleReadStatus(${row.id}, ${row.enabled})`
+        },
+        {
+            name: 'delete',
+            label: '删除',
+            icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+            danger: true,
+            onClick: `deleteEntry(${row.id})`
+        }
+    ],
+    rowId: 'id',
+    pageSize: 20,
+    selectable: true,
+    initialParams: {
+        feed_id: {{ feed_id or 'null' }},
+        q: '{{ search_query }}'
+    },
+    onSelectionChange: (ids) => {
+        updateBatchActions(ids);
+    }
+});
+
+// Toggle read status (enabled: true = 未读, false = 已读)
+async function toggleReadStatus(id, currentEnabled) {
+    const result = await API.entries.put(id, { enabled: !currentEnabled });
+    if (result.success) {
+        Toast.success(currentEnabled ? '已标记为已读' : '已标记为未读');
+        entriesTable.refresh();
+    } else {
+        Toast.error(result.error || '操作失败');
+    }
+}
+
+// Delete entry
+async function deleteEntry(id) {
+    Forms.confirm('确定要删除这篇文章吗？', {
+        title: '删除文章',
+        confirmText: '删除',
+        onConfirm: async () => {
+            const result = await API.entries.delete(id);
+            if (result.success) {
+                Toast.success('删除成功');
+                entriesTable.refresh();
+            } else {
+                Toast.error(result.error || '删除失败');
+            }
+        }
+    });
+}
+
+// Update batch actions visibility
+function updateBatchActions(selectedIds) {
+    const batchActions = document.getElementById('batch-actions');
+    const selectedCount = document.getElementById('selected-count');
+
+    if (selectedIds.length > 0) {
+        batchActions.style.display = 'flex';
+        selectedCount.textContent = selectedIds.length;
+    } else {
+        batchActions.style.display = 'none';
+    }
+}
+
+// Batch mark as read
+document.getElementById('batch-mark-read')?.addEventListener('click', async () => {
+    const ids = entriesTable.getSelectedIds();
+    if (ids.length === 0) return;
+
+    const result = await API.entries.batchMarkRead(ids);
+    if (result.success) {
+        Toast.success(`已标记 ${ids.length} 篇文章为已读`);
+        entriesTable.clearSelection();
+        entriesTable.refresh();
+    } else {
+        Toast.error(result.error || '操作失败');
+    }
+});
+
+// Batch delete
+document.getElementById('batch-delete')?.addEventListener('click', async () => {
+    const ids = entriesTable.getSelectedIds();
+    if (ids.length === 0) return;
+
+    Forms.confirm(`确定要删除选中的 ${ids.length} 篇文章吗？`, {
+        title: '批量删除',
+        confirmText: '删除',
+        onConfirm: async () => {
+            const result = await API.entries.batchDelete(ids);
+            if (result.success) {
+                Toast.success(`删除成功`);
+                entriesTable.clearSelection();
+                entriesTable.refresh();
+            } else {
+                Toast.error(result.error || '删除失败');
+            }
+        }
+    });
+});
+
+// Refresh button
+document.getElementById('refresh-btn')?.addEventListener('click', () => {
+    entriesTable.refresh();
+});
+
+// Feed filter
+document.getElementById('feed-filter')?.addEventListener('change', (e) => {
+    const feedId = e.target.value ? parseInt(e.target.value) : null;
+    entriesTable.setFilters({ feed_id: feedId });
+});
+
+// Search (debounced)
+let searchTimeout;
+document.getElementById('search-input')?.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        entriesTable.setFilters({ q: e.target.value || null });
+    }, 300);
+});
+
+// Register keyboard shortcuts
+Keyboard.register('a', () => entriesTable.toggleSelectAll(), '全选/取消全选');
+Keyboard.register('r', () => entriesTable.refresh(), '刷新列表');
+Keyboard.register('/', () => {
+    document.getElementById('search-input')?.focus();
+    return false; // Prevent default
+}, '聚焦搜索框');
+</script>
 {% endblock %}

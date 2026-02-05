@@ -356,7 +356,7 @@ class ContentParser:
         for fmt in date_formats:
             try:
                 return datetime.strptime(date_str, fmt)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 continue
 
         # Try parsing without timezone
@@ -367,7 +367,7 @@ class ContentParser:
             for fmt in date_formats:
                 try:
                     return datetime.strptime(date_str_clean, fmt)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     continue
         except Exception:
             pass
@@ -398,10 +398,7 @@ class ContentParser:
         if not tags and "categories" in raw_entry:
             raw_categories = raw_entry.get("categories")
             if isinstance(raw_categories, list):
-                tags = [
-                    cat.get("term") if isinstance(cat, dict) else cat
-                    for cat in raw_categories
-                ]
+                tags = [cat.get("term") if isinstance(cat, dict) else cat for cat in raw_categories]
             elif isinstance(raw_categories, str):
                 tags = raw_categories.split(",")
 
@@ -508,9 +505,7 @@ class FeedMetadataParser:
         return {
             "title": self._normalize_title(feed.get("title") if feed else None),
             "link": self._normalize_link(feed.get("link") if feed else None),
-            "description": self._normalize_description(
-                feed.get("description") if feed else None
-            ),
+            "description": self._normalize_description(feed.get("description") if feed else None),
             "language": feed.get("language") if feed else None,
             "updated_at": ContentParser()._parse_date(feed.get("updated") if feed else None),
             "entry_count": len(entries),

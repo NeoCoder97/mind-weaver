@@ -23,34 +23,20 @@ class SchedulerBlueprint:
         from flask import Blueprint
 
         self.db_path = db_path
-        self.blueprint = Blueprint(
-            "scheduler",
-            __name__,
-            url_prefix="/api/scheduler"
-        )
+        self.blueprint = Blueprint("scheduler", __name__, url_prefix="/api/scheduler")
         self._register_routes()
 
     def _register_routes(self):
         """Register all scheduler routes."""
+        self.blueprint.add_url_rule("/status", view_func=self._status, methods=["GET"])
+        self.blueprint.add_url_rule("/start", view_func=self._start, methods=["POST"])
+        self.blueprint.add_url_rule("/stop", view_func=self._stop, methods=["POST"])
+        self.blueprint.add_url_rule("/fetch-all", view_func=self._fetch_all, methods=["POST"])
         self.blueprint.add_url_rule(
-            "/status",
-            view_func=self._status,
-            methods=["GET"]
+            "/digest/trigger", view_func=self._trigger_digest, methods=["POST"]
         )
         self.blueprint.add_url_rule(
-            "/start",
-            view_func=self._start,
-            methods=["POST"]
-        )
-        self.blueprint.add_url_rule(
-            "/stop",
-            view_func=self._stop,
-            methods=["POST"]
-        )
-        self.blueprint.add_url_rule(
-            "/fetch-all",
-            view_func=self._fetch_all,
-            methods=["POST"]
+            "/digest/logs", view_func=self._get_digest_logs, methods=["GET"]
         )
 
     def _status(self):
@@ -86,11 +72,13 @@ class SchedulerBlueprint:
                         {
                             "id": job.job_id,
                             "name": job.name,
-                            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                            "next_run_time": (
+                                job.next_run_time.isoformat() if job.next_run_time else None
+                            ),
                         }
                         for job in jobs
                     ],
-                }
+                },
             )
         else:
             # Get feed counts even when scheduler is not initialized
@@ -109,7 +97,7 @@ class SchedulerBlueprint:
                     "total_feeds_count": total_feeds,
                     "enabled_feeds_count": enabled_feeds,
                     "jobs": [],
-                }
+                },
             )
 
     def _start(self):
@@ -122,24 +110,13 @@ class SchedulerBlueprint:
         manager = get_scheduler_manager()
 
         if not manager.get_scheduler():
-            return api_response(
-                success=False,
-                error="调度器未初始化",
-                status=500
-            )
+            return api_response(success=False, error="调度器未初始化", status=500)
 
         if manager.start_scheduler():
             logger.info("Scheduler started via API")
-            return api_response(
-                success=True,
-                message="调度器启动成功"
-            )
+            return api_response(success=True, message="调度器启动成功")
         else:
-            return api_response(
-                success=False,
-                error="调度器启动失败",
-                status=500
-            )
+            return api_response(success=False, error="调度器启动失败", status=500)
 
     def _stop(self):
         """Stop the scheduler.
@@ -151,24 +128,13 @@ class SchedulerBlueprint:
         manager = get_scheduler_manager()
 
         if not manager.get_scheduler():
-            return api_response(
-                success=False,
-                error="调度器未初始化",
-                status=500
-            )
+            return api_response(success=False, error="调度器未初始化", status=500)
 
         if manager.stop_scheduler(wait=False):
             logger.info("Scheduler stopped via API")
-            return api_response(
-                success=True,
-                message="调度器停止成功"
-            )
+            return api_response(success=True, message="调度器停止成功")
         else:
-            return api_response(
-                success=False,
-                error="调度器停止失败",
-                status=500
-            )
+            return api_response(success=False, error="调度器停止失败", status=500)
 
     def _fetch_all(self):
         """Manually trigger fetch for all enabled feeds.
@@ -190,7 +156,9 @@ class SchedulerBlueprint:
         with db_manager.session() as session:
             from spider_aggregation.storage.repositories.feed_repo import FeedRepository
             from spider_aggregation.storage.repositories.entry_repo import EntryRepository
-            from spider_aggregation.storage.repositories.filter_rule_repo import FilterRuleRepository
+            from spider_aggregation.storage.repositories.filter_rule_repo import (
+                FilterRuleRepository,
+            )
 
             feed_repo = FeedRepository(session)
             entry_repo = EntryRepository(session)
@@ -217,21 +185,20 @@ class SchedulerBlueprint:
                         etag=feed.etag,
                         last_modified=feed.last_modified,
                         max_entries=feed.max_entries_per_fetch,
-                        recent_only=feed.fetch_only_recent,
                     )
 
                     if not fetch_result.success:
                         feed_repo.update_fetch_info(
-                            feed,
-                            increment_error=True,
-                            last_error=fetch_result.error
+                            feed, increment_error=True, last_error=fetch_result.error
                         )
-                        results.append({
-                            "feed_id": feed.id,
-                            "feed_name": feed.name,
-                            "success": False,
-                            "error": fetch_result.error
-                        })
+                        results.append(
+                            {
+                                "feed_id": feed.id,
+                                "feed_name": feed.name,
+                                "success": False,
+                                "error": fetch_result.error,
+                            }
+                        )
                         continue
 
                     # Parse and store entries
@@ -241,9 +208,7 @@ class SchedulerBlueprint:
 
                         # Check for duplicates
                         duplicate = deduplicator.check_duplicate(
-                            parsed,
-                            entry_repo,
-                            feed_id=feed.id
+                            parsed, entry_repo, feed_id=feed.id
                         )
 
                         if duplicate.is_duplicate:
@@ -256,37 +221,43 @@ class SchedulerBlueprint:
 
                         # Create entry
                         from spider_aggregation.models import EntryCreate
+
                         entry_create = EntryCreate(**parsed)
                         entry_repo.create(entry_create)
                         entries_created += 1
 
                     # Update fetch info
                     from datetime import datetime
+
                     feed_repo.update_fetch_info(
                         feed,
                         last_fetched_at=datetime.utcnow(),
                         reset_errors=True,
                         etag=fetch_result.etag,
-                        last_modified=fetch_result.last_modified
+                        last_modified=fetch_result.last_modified,
                     )
 
                     total_entries_created += entries_created
-                    results.append({
-                        "feed_id": feed.id,
-                        "feed_name": feed.name,
-                        "success": True,
-                        "entries_created": entries_created,
-                        "http_status": fetch_result.http_status,
-                    })
+                    results.append(
+                        {
+                            "feed_id": feed.id,
+                            "feed_name": feed.name,
+                            "success": True,
+                            "entries_created": entries_created,
+                            "http_status": fetch_result.http_status,
+                        }
+                    )
 
                 except Exception as e:
                     logger.error(f"Error fetching feed {feed.id}: {e}")
-                    results.append({
-                        "feed_id": feed.id,
-                        "feed_name": feed.name,
-                        "success": False,
-                        "error": str(e)
-                    })
+                    results.append(
+                        {
+                            "feed_id": feed.id,
+                            "feed_name": feed.name,
+                            "success": False,
+                            "error": str(e),
+                        }
+                    )
 
         logger.info(f"Manual fetch all completed: {total_entries_created} entries created")
 
@@ -295,14 +266,82 @@ class SchedulerBlueprint:
             data={
                 "feeds_fetched": len(feeds),
                 "total_entries_created": total_entries_created,
-                "results": results
+                "results": results,
             },
-            message=f"成功获取 {len(feeds)} 个订阅源，共创建 {total_entries_created} 条新内容"
+            message=f"成功获取 {len(feeds)} 个订阅源，共创建 {total_entries_created} 条新内容",
+        )
+
+    def _trigger_digest(self):
+        """Manually trigger digest generation and sending.
+
+        Returns:
+            API response with result
+        """
+        logger = get_logger(__name__)
+        manager = get_scheduler_manager()
+
+        result = manager.trigger_digest_now()
+
+        if result["success"]:
+            logger.info(f"Digest triggered manually: {result.get('entry_count', 0)} entries")
+            return api_response(
+                success=True,
+                data=result,
+                message=f"邮件已发送，包含 {result.get('entry_count', 0)} 条内容",
+            )
+        else:
+            logger.error(f"Manual digest trigger failed: {result.get('error')}")
+            return api_response(success=False, error=result.get("error", "发送失败"), status=500)
+
+    def _get_digest_logs(self):
+        """Get digest send logs.
+
+        Returns:
+            API response with logs
+        """
+        from spider_aggregation.storage.database import DatabaseManager
+        from spider_aggregation.models import DigestLogModel
+        from sqlalchemy import desc
+
+        page = request.args.get("page", 1, type=int)
+        page_size = request.args.get("page_size", 20, type=int)
+
+        db_manager = DatabaseManager(self.db_path)
+
+        with db_manager.session() as session:
+            query = session.query(DigestLogModel).order_by(desc(DigestLogModel.sent_at))
+            total = query.count()
+            logs = query.offset((page - 1) * page_size).limit(page_size).all()
+
+            data = []
+            for log in logs:
+                data.append(
+                    {
+                        "id": log.id,
+                        "sent_at": log.sent_at.isoformat() if log.sent_at else None,
+                        "status": log.status,
+                        "entry_count": log.entry_count,
+                        "feed_ids": json.loads(log.feed_ids) if log.feed_ids else [],
+                        "subject": log.subject,
+                        "to_addresses": json.loads(log.to_addresses) if log.to_addresses else [],
+                        "error_message": log.error_message,
+                    }
+                )
+
+        return api_response(
+            success=True,
+            data={
+                "logs": data,
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+            },
         )
 
 
 # Backward compatibility: these functions are no-ops now
 # The scheduler is managed by SchedulerManager instead
+
 
 def get_scheduler():
     """Get the scheduler instance (deprecated).

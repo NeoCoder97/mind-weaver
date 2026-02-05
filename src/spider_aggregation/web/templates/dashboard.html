@@ -3,95 +3,267 @@
 {% block title %}仪表盘 - MindWeaver{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h2>仪表盘</h2>
-</div>
-
-<!-- Scheduler Control -->
-<div class="dashboard-section">
-    <h3>调度器控制</h3>
-    <div class="scheduler-control">
-        <div class="scheduler-status" id="scheduler-status">
-            <span class="status-indicator" id="scheduler-indicator"></span>
-            <span id="scheduler-status-text">加载中...</span>
-        </div>
-        <div class="scheduler-actions">
-            <button type="button" class="btn btn-success" id="btn-start-scheduler" onclick="startScheduler()">启动调度器</button>
-            <button type="button" class="btn btn-danger" id="btn-stop-scheduler" onclick="stopScheduler()" style="display: none;">停止调度器</button>
-            <button type="button" class="btn btn-primary" id="btn-fetch-all" onclick="fetchAllFeeds()">立即抓取全部</button>
+<div class="page">
+    <div class="page-header">
+        <h2 class="page-title">仪表盘</h2>
+        <div class="page-actions">
+            <button class="btn btn-secondary" id="refresh-stats">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                </svg>
+                刷新
+            </button>
         </div>
     </div>
-</div>
 
-<!-- Stats Cards -->
-<div class="dashboard-cards" id="stats-cards">
-    <div class="dashboard-card">
-        <div class="dashboard-card-title">总文章数</div>
-        <div class="dashboard-card-value" id="total-entries">-</div>
-    </div>
-    <div class="dashboard-card">
-        <div class="dashboard-card-title">订阅源数</div>
-        <div class="dashboard-card-value" id="total-feeds">-</div>
-    </div>
-    <div class="dashboard-card">
-        <div class="dashboard-card-title">过滤规则</div>
-        <div class="dashboard-card-value" id="total-rules">-</div>
-    </div>
-    <div class="dashboard-card">
-        <div class="dashboard-card-title">最后更新</div>
-        <div class="dashboard-card-value" style="font-size: 1rem;" id="last-updated">-</div>
-    </div>
-</div>
+    <div class="page-content">
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">总文章数</div>
+                    <div class="stat-value" id="total-entries">-</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: #e6f4ea; color: #34a853;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M6.76 4.84l-1.8-1.79-1.41 1.41 1.79 1.79 1.42-1.41zM4 10.5H1v2h3v-2zm9-9.95h-2V3.5h2V.55zm7.45 3.91l-1.41-1.41-1.79 1.79 1.41 1.41 1.79-1.79zm-3.21 13.7l1.79 1.8 1.41-1.41-1.8-1.79-1.4 1.4zM20 10.5v2h3v-2h-3zm-8-5c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm-1 16.95h2V19.5h-2v2.95zm-7.45-3.91l1.41 1.41 1.79-1.8-1.41-1.41-1.79 1.8z"/>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">订阅源</div>
+                    <div class="stat-value" id="total-feeds">-</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: #fef7e0; color: #fbbc04;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">分类</div>
+                    <div class="stat-value" id="total-categories">-</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: #fce8e6; color: #ea4335;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-label">今日新增</div>
+                    <div class="stat-value" id="today-entries">-</div>
+                </div>
+            </div>
+        </div>
 
-<!-- Language Distribution Chart -->
-<div class="dashboard-section">
-    <h3>语言分布</h3>
-    <div class="chart-container">
-        <canvas id="language-chart"></canvas>
-    </div>
-</div>
+        <!-- Scheduler Control -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">
+                调度器状态
+            </div>
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-md">
+                        <span class="status-dot" id="scheduler-status-dot"></span>
+                        <span id="scheduler-status-text">加载中...</span>
+                    </div>
+                    <div class="flex gap-sm">
+                        <button class="btn btn-primary btn-sm" id="start-scheduler">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M8 5v14l11-7z"/>
+                            </svg>
+                            启动
+                        </button>
+                        <button class="btn btn-secondary btn-sm" id="stop-scheduler">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M6 6h12v12H6z"/>
+                            </svg>
+                            停止
+                        </button>
+                        <button class="btn btn-ghost btn-sm" id="trigger-scheduler">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                            </svg>
+                            立即抓取
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<!-- Recent Activity -->
-<div class="dashboard-section">
-    <h3>最近活动</h3>
-    <div id="recent-activity">
-        <p class="empty-state">加载中...</p>
-    </div>
-</div>
+        <!-- Recent Activity -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header flex items-center justify-between">
+                <span>最近活动</span>
+                <a href="/" class="btn btn-ghost btn-sm">查看全部</a>
+            </div>
+            <div class="card-body">
+                <ul id="dashboard-activity-list" class="activity-list">
+                    <li class="text-secondary">加载中...</li>
+                </ul>
+            </div>
+        </div>
 
-<!-- Feed Health -->
-<div class="dashboard-section">
-    <h3>订阅源健康状态</h3>
-    <div class="table-container">
-        <table id="feed-health-table">
-            <thead>
-                <tr>
-                    <th>订阅源</th>
-                    <th>状态</th>
-                    <th>最后抓取</th>
-                    <th>错误数</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="4" class="empty-state">加载中...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="dashboard-section">
-    <h3>快捷操作</h3>
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <a href="{{ url_for('feeds') }}" class="btn btn-primary">管理订阅源</a>
-        <a href="{{ url_for('filter_rules') }}" class="btn btn-secondary">管理规则</a>
-        <a href="{{ url_for('settings') }}" class="btn btn-secondary">设置</a>
+        <!-- Feed Health -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header flex items-center justify-between">
+                <span>订阅源健康状态</span>
+                <a href="/feeds" class="btn btn-ghost btn-sm">管理订阅源</a>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>状态</th>
+                                <th>错误次数</th>
+                                <th>最后抓取</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboard-feed-health-body">
+                            <tr><td colspan="4" class="text-center text-secondary">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% block extra_js %}
+<script>
+// Load stats
+async function loadStats() {
+    const result = await API.stats.get();
+    if (result.success && result.data) {
+        const stats = result.data;
+        document.getElementById('total-entries').textContent = stats.total_entries || 0;
+        document.getElementById('total-feeds').textContent = stats.total_feeds || 0;
+        document.getElementById('total-categories').textContent = stats.total_categories || 0;
+        document.getElementById('today-entries').textContent = stats.today_entries || 0;
+    }
+}
+
+// Load scheduler status
+async function loadSchedulerStatus() {
+    const result = await API.scheduler.getStatus();
+    if (result.success && result.data) {
+        const status = result.data;
+        const dot = document.getElementById('scheduler-status-dot');
+        const text = document.getElementById('scheduler-status-text');
+
+        if (status.is_running) {
+            dot.className = 'status-dot active';
+            text.textContent = '运行中';
+        } else {
+            dot.className = 'status-dot inactive';
+            text.textContent = '已停止';
+        }
+    }
+}
+
+// Start scheduler
+document.getElementById('start-scheduler')?.addEventListener('click', async () => {
+    const result = await API.scheduler.start();
+    if (result.success) {
+        Toast.success('调度器已启动');
+        loadSchedulerStatus();
+    } else {
+        Toast.error(result.error || '启动失败');
+    }
+});
+
+// Stop scheduler
+document.getElementById('stop-scheduler')?.addEventListener('click', async () => {
+    const result = await API.scheduler.stop();
+    if (result.success) {
+        Toast.success('调度器已停止');
+        loadSchedulerStatus();
+    } else {
+        Toast.error(result.error || '停止失败');
+    }
+});
+
+// Trigger scheduler
+document.getElementById('trigger-scheduler')?.addEventListener('click', async () => {
+    const result = await API.scheduler.trigger();
+    if (result.success) {
+        Toast.success('抓取任务已触发');
+        loadStats();
+    } else {
+        Toast.error(result.error || '触发失败');
+    }
+});
+
+// Load recent activity
+async function loadActivity() {
+    const listEl = document.getElementById('dashboard-activity-list');
+    const result = await API.dashboard.activity(10);
+    if (result.success && result.data && result.data.length) {
+        listEl.innerHTML = result.data.map(entry => {
+            const date = entry.fetched_at ? new Date(entry.fetched_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+            const feed = entry.feed_name ? `<span class="text-muted" style="font-size: 0.8rem;">${entry.feed_name}</span>` : '';
+            return `<li class="activity-item"><a href="/entry/${entry.id}">${entry.title || '(无标题)'}</a> ${feed} <span class="text-muted" style="font-size: 0.8rem;">${date}</span></li>`;
+        }).join('');
+    } else {
+        listEl.innerHTML = '<li class="text-secondary">暂无最近活动</li>';
+    }
+}
+
+// Load feed health
+async function loadFeedHealth() {
+    const tbody = document.getElementById('dashboard-feed-health-body');
+    const result = await API.dashboard.feedHealth();
+    if (result.success && result.data && result.data.length) {
+        tbody.innerHTML = result.data.slice(0, 10).map(f => {
+            const status = f.enabled ? (f.has_error ? '<span class="text-warning">异常</span>' : '<span class="text-success">正常</span>') : '<span class="text-muted">已禁用</span>';
+            const lastFetch = f.last_fetched ? new Date(f.last_fetched).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+            return `<tr><td><a href="/feeds">${f.name || f.url}</a></td><td>${status}</td><td>${f.error_count ?? 0}</td><td>${lastFetch}</td></tr>`;
+        }).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-secondary">暂无订阅源</td></tr>';
+    }
+}
+
+// Refresh stats
+document.getElementById('refresh-stats')?.addEventListener('click', () => {
+    loadStats();
+    loadSchedulerStatus();
+    loadActivity();
+    loadFeedHealth();
+});
+
+// Initial load
+loadStats();
+loadSchedulerStatus();
+loadActivity();
+loadFeedHealth();
+
+// Auto-refresh every 30 seconds
+setInterval(() => {
+    loadStats();
+    loadSchedulerStatus();
+    loadActivity();
+    loadFeedHealth();
+}, 30000);
+
+// Register keyboard shortcuts
+Keyboard.register('r', () => {
+    loadStats();
+    loadSchedulerStatus();
+    loadActivity();
+    loadFeedHealth();
+}, '刷新数据');
+</script>
 {% endblock %}

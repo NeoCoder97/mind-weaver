@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 # Try to import Zhipu AI
 try:
     from zhipuai import ZhipuAI
+
     ZHIPUAI_AVAILABLE = True
 except ImportError:
     ZHIPUAI_AVAILABLE = False
@@ -125,7 +126,7 @@ class ExtractiveSummarizer:
             score += 0.3
 
         # Quotes suggest important statements
-        if '"' in sentence or "'" in sentence or "\"" in sentence:
+        if '"' in sentence or "'" in sentence or '"' in sentence:
             score += 0.2
 
         # Question marks in first half suggest topic sentences
@@ -144,9 +145,7 @@ class ExtractiveSummarizer:
             SummaryResult with generated summary
         """
         if not text or len(text.strip()) < 100:
-            return SummaryResult(
-                success=False, error="Text too short for summarization"
-            )
+            return SummaryResult(success=False, error="Text too short for summarization")
 
         # Split into sentences
         sentences = self._split_sentences(text)
@@ -158,8 +157,7 @@ class ExtractiveSummarizer:
 
         # Score sentences
         scored_sentences = [
-            (s, self._score_sentence(s, i, len(sentences)))
-            for i, s in enumerate(sentences)
+            (s, self._score_sentence(s, i, len(sentences))) for i, s in enumerate(sentences)
         ]
 
         # Sort by score and select top sentences
@@ -167,9 +165,7 @@ class ExtractiveSummarizer:
         selected = scored_sentences[: self.max_sentences]
 
         # Re-sort by original position
-        selected_with_pos = [
-            (s, sentences.index(s), score) for s, score in selected
-        ]
+        selected_with_pos = [(s, sentences.index(s), score) for s, score in selected]
         selected_with_pos.sort(key=lambda x: x[1])
 
         # Join sentences
@@ -203,6 +199,7 @@ class AISummarizer:
         # Get API key from parameter or environment
         if not api_key:
             import os
+
             api_key = os.getenv("ZHIPUAI_API_KEY")
 
         if not api_key:
@@ -242,23 +239,18 @@ class AISummarizer:
         """
         if not self._client:
             return SummaryResult(
-                success=False,
-                error="Zhipu AI client not initialized (check API key)"
+                success=False, error="Zhipu AI client not initialized (check API key)"
             )
 
         if not text or len(text.strip()) < 100:
-            return SummaryResult(
-                success=False, error="Text too short for summarization"
-            )
+            return SummaryResult(success=False, error="Text too short for summarization")
 
         try:
             prompt = self._build_prompt(text)
 
             response = self._client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
+                messages=[{"role": "user", "content": prompt}],
                 max_tokens=self.max_tokens,
                 temperature=0.7,
             )
@@ -312,7 +304,9 @@ class Summarizer:
                     max_tokens=ai_max_tokens,
                 )
             except Exception as e:
-                logger.warning(f"Failed to initialize AI summarizer: {e}, falling back to extractive")
+                logger.warning(
+                    f"Failed to initialize AI summarizer: {e}, falling back to extractive"
+                )
                 self.method = "extractive"
                 self._ai = None
         else:
@@ -339,7 +333,9 @@ class Summarizer:
             result = self._ai.summarize(text)
             # Fallback to extractive on AI failure
             if not result.success and result.error:
-                logger.warning(f"AI summarization failed, falling back to extractive: {result.error}")
+                logger.warning(
+                    f"AI summarization failed, falling back to extractive: {result.error}"
+                )
                 return self._extractive.summarize(text)
             return result
         else:

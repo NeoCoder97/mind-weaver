@@ -68,7 +68,9 @@ class FeedRepository(
         filters = {}
         if enabled_only:
             filters["enabled"] = True
-        return super().list(limit=limit, offset=offset, order_by=order_by, order_desc=order_desc, **filters)
+        return super().list(
+            limit=limit, offset=offset, order_by=order_by, order_desc=order_desc, **filters
+        )
 
     def count(self, enabled_only: bool = False) -> int:
         """Count feeds.
@@ -214,9 +216,7 @@ class FeedRepository(
 
         return feed.categories
 
-    def set_categories(
-        self, feed: FeedModel, category_ids: list[int]
-    ) -> FeedModel:
+    def set_categories(self, feed: FeedModel, category_ids: list[int]) -> FeedModel:
         """Set categories for a feed (replaces existing categories).
 
         Delegates to CategoryRelationshipMixin.set_categories_for_feed().
@@ -229,7 +229,9 @@ class FeedRepository(
             Updated FeedModel instance
         """
         # Use mixin method, don't refresh to avoid DetachedInstanceError
-        return self.set_categories_for_feed(feed, category_ids, update_timestamp=True, refresh=False)
+        return self.set_categories_for_feed(
+            feed, category_ids, update_timestamp=True, refresh=False
+        )
 
     def add_category(self, feed: FeedModel, category: CategoryModel) -> None:
         """Add a category to a feed.

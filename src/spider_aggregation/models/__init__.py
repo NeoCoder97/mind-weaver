@@ -8,6 +8,13 @@ from spider_aggregation.models.category import (
     CategoryResponse,
     CategoryUpdate,
 )
+from spider_aggregation.models.digest_log import (
+    DigestLogCreate,
+    DigestLogListResponse,
+    DigestLogModel,
+    DigestLogResponse,
+    DigestLogUpdate,
+)
 from spider_aggregation.models.entry import (
     EntryCreate,
     EntryListResponse,
@@ -16,11 +23,11 @@ from spider_aggregation.models.entry import (
     EntryUpdate,
 )
 from spider_aggregation.models.filter_rule import (
-    FilterRuleModel,
     FilterRuleCreate,
-    FilterRuleUpdate,
-    FilterRuleResponse,
     FilterRuleListResponse,
+    FilterRuleModel,
+    FilterRuleResponse,
+    FilterRuleUpdate,
 )
 from spider_aggregation.models.feed import (
     FeedCreate,
@@ -54,4 +61,9 @@ __all__ = [
     "CategoryUpdate",
     "CategoryResponse",
     "CategoryListResponse",
+    "DigestLogModel",
+    "DigestLogCreate",
+    "DigestLogUpdate",
+    "DigestLogResponse",
+    "DigestLogListResponse",
 ]

@@ -74,9 +74,7 @@ class CategoryRepository(
         Returns:
             CategoryModel instance or None
         """
-        return (
-            self.session.query(CategoryModel).filter(CategoryModel.name == name).first()
-        )
+        return self.session.query(CategoryModel).filter(CategoryModel.name == name).first()
 
     def list(
         self, enabled_only: bool = False, limit: int = 1000, offset: int = 0
@@ -94,7 +92,9 @@ class CategoryRepository(
         filters = {}
         if enabled_only:
             filters["enabled"] = True
-        return super().list(limit=limit, offset=offset, order_by="name", order_desc=False, **filters)
+        return super().list(
+            limit=limit, offset=offset, order_by="name", order_desc=False, **filters
+        )
 
     def count(self, enabled_only: bool = False) -> int:
         """Count categories.
@@ -128,9 +128,7 @@ class CategoryRepository(
         self.session.refresh(category)
         return category
 
-    def add_feed_to_category(
-        self, feed: FeedModel, category: CategoryModel
-    ) -> None:
+    def add_feed_to_category(self, feed: FeedModel, category: CategoryModel) -> None:
         """Add a feed to a category.
 
         Delegates to CategoryRelationshipMixin.add_category_to_feed().
@@ -142,9 +140,7 @@ class CategoryRepository(
         # Don't update timestamp when called from CategoryRepository
         self.add_category_to_feed(feed, category, update_timestamp=False)
 
-    def remove_feed_from_category(
-        self, feed: FeedModel, category: CategoryModel
-    ) -> None:
+    def remove_feed_from_category(self, feed: FeedModel, category: CategoryModel) -> None:
         """Remove a feed from a category.
 
         Delegates to CategoryRelationshipMixin.remove_category_from_feed().
@@ -206,9 +202,7 @@ class CategoryRepository(
 
         return query.count()
 
-    def set_categories_for_feed(
-        self, feed: FeedModel, category_ids: list[int]
-    ) -> FeedModel:
+    def set_categories_for_feed(self, feed: FeedModel, category_ids: list[int]) -> FeedModel:
         """Set categories for a feed (replaces existing categories).
 
         Delegates to CategoryRelationshipMixin.set_categories_for_feed().

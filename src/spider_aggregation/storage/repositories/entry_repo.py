@@ -183,7 +183,9 @@ class EntryRepository(
         filters = {}
         if feed_id is not None:
             filters["feed_id"] = feed_id
-        return super().list(limit=limit, offset=offset, order_by=order_by, order_desc=order_desc, **filters)
+        return super().list(
+            limit=limit, offset=offset, order_by=order_by, order_desc=order_desc, **filters
+        )
 
     def count(self, feed_id: Optional[int] = None) -> int:
         """Count entries.
@@ -249,9 +251,7 @@ class EntryRepository(
         Returns:
             Number of entries deleted
         """
-        count = (
-            self.session.query(EntryModel).filter(EntryModel.feed_id == feed_id).delete()
-        )
+        count = self.session.query(EntryModel).filter(EntryModel.feed_id == feed_id).delete()
         self.session.flush()
         return count
 
@@ -365,5 +365,21 @@ class EntryRepository(
         count = q.delete()
         self.session.flush()
         return count
+
+    def count_by_date(self, date: datetime) -> int:
+        """Count entries fetched on or after a specific date.
+
+        Args:
+            date: The cutoff date (timezone-aware datetime)
+
+        Returns:
+            Number of entries fetched on or after the date
+        """
+        count = (
+            self.session.query(func.count(EntryModel.id))
+            .filter(EntryModel.fetched_at >= date)
+            .scalar()
+        )
+        return count or 0
 
     # Category-related methods are now provided by EntryCategoryQueryMixin

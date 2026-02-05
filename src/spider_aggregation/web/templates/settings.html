@@ -1,112 +1,493 @@
 {% extends "base.html" %}
 
-{% block title %}设置 - MindWeaver{% endblock %}
+{% block title %}系统设置 - MindWeaver{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h2>系统设置</h2>
-</div>
-
-<!-- Data Management -->
-<div class="dashboard-section">
-    <h3>数据管理</h3>
-
-    <div class="form-group">
-        <label>清理旧文章</label>
-        <p class="form-help">删除指定天数之前抓取的文章</p>
-        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
-            <input type="number" id="cleanup-days" class="form-control" value="90" min="1" max="365" style="width: 100px;">
-            <span>天</span>
-            <button type="button" class="btn btn-danger" onclick="cleanupOldData()">清理</button>
-        </div>
+<div class="page">
+    <div class="page-header">
+        <h2 class="page-title">系统设置</h2>
     </div>
-</div>
 
-<!-- Data Export -->
-<div class="dashboard-section">
-    <h3>数据导出</h3>
+    <div class="page-content">
+        <div class="card">
+            <div class="card-header">应用配置</div>
+            <div class="card-body">
+                <form id="settings-form">
+                    <div class="form-group">
+                        <label for="setting-scheduler-interval">调度器检查间隔 (秒)</label>
+                        <input type="number" id="setting-scheduler-interval" name="scheduler_interval" min="10" max="3600" value="60">
+                        <div class="form-help">调度器检查是否有订阅源需要抓取的时间间隔</div>
+                    </div>
 
-    <div style="display: flex; flex-direction: column; gap: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>导出文章</strong>
-                <p class="form-help">下载所有文章为 JSON 文件</p>
+                    <div class="form-group">
+                        <label for="setting-max-workers">最大工作线程数</label>
+                        <input type="number" id="setting-max-workers" name="max_workers" min="1" max="10" value="3">
+                        <div class="form-help">同时抓取订阅源的最大线程数</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setting-entry-limit">保留文章天数</label>
+                        <input type="number" id="setting-entry-limit" name="entry_retention_days" min="0" value="0">
+                        <div class="form-help">0 表示永久保留，超过此天数的文章将被自动清理</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setting-content-length">全文内容最大长度</label>
+                        <input type="number" id="setting-content-length" name="max_content_length" min="1000" max="1000000" value="500000">
+                        <div class="form-help">抓取全文内容时的最大字符数限制</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="auto_fetch_content" id="setting-auto-fetch">
+                            自动抓取全文内容
+                        </label>
+                        <div class="form-help">新增文章时自动尝试抓取完整内容</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="enable_summarization" id="setting-summarization">
+                            启用 AI 摘要
+                        </label>
+                        <div class="form-help">使用 AI 为文章生成摘要（需要配置 API Key）</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setting-api-key">AI API Key</label>
+                        <input type="password" id="setting-api-key" name="ai_api_key" placeholder="sk-..." autocomplete="off">
+                        <div class="form-help">用于生成摘要的 AI 服务 API Key</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setting-api-url">AI API URL</label>
+                        <input type="url" id="setting-api-url" name="ai_api_url" placeholder="https://api.openai.com/v1">
+                        <div class="form-help">AI 服务的 API 端点地址</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="setting-timezone">时区</label>
+                        <input type="text" id="setting-timezone" name="timezone" value="Asia/Shanghai">
+                        <div class="form-help">用于显示时间的时区，默认为 Asia/Shanghai (UTC+8)</div>
+                    </div>
+                </form>
             </div>
-            <a href="{{ url_for('system._export_entries') }}" class="btn btn-secondary">下载文章</a>
+            <div class="card-footer">
+                <button type="submit" class="btn btn-primary" form="settings-form">保存设置</button>
+            </div>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>导出订阅源</strong>
-                <p class="form-help">下载所有订阅源为 JSON 文件</p>
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">数据管理</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="cleanup-days">清理旧条目</label>
+                    <div class="flex gap-sm" style="align-items: center; flex-wrap: wrap;">
+                        <input type="number" id="cleanup-days" min="1" value="90" style="width: 100px;">
+                        <span>天前的条目将被删除</span>
+                        <button type="button" class="btn btn-secondary btn-sm" id="cleanup-btn">执行清理</button>
+                    </div>
+                    <div class="form-help">仅删除早于指定天数的文章，不影响订阅源与分类</div>
+                </div>
+                <div class="form-group">
+                    <label>导出数据</label>
+                    <div class="flex gap-sm" style="flex-wrap: wrap;">
+                        <button type="button" class="btn btn-ghost btn-sm" id="export-entries-btn">导出条目 (JSON)</button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="export-feeds-btn">导出订阅源 (JSON)</button>
+                    </div>
+                </div>
             </div>
-            <a href="{{ url_for('system._export_feeds') }}" class="btn btn-secondary">下载订阅源</a>
         </div>
-    </div>
-</div>
 
-<!-- System Info -->
-<div class="dashboard-section">
-    <h3>系统信息</h3>
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">系统配置（LLM / 邮件 / 摘要）</div>
+            <div class="card-body">
+                <div class="tabs" style="margin-bottom: 16px;">
+                    <button type="button" class="tab-btn active" data-tab="llm">LLM</button>
+                    <button type="button" class="tab-btn" data-tab="email">邮件</button>
+                    <button type="button" class="tab-btn" data-tab="digest">摘要</button>
+                </div>
+                <div id="tab-llm" class="tab-pane">
+                    <form id="config-llm-form" class="form-grid">
+                        <div class="form-group">
+                            <label><input type="checkbox" name="enabled" id="cfg-llm-enabled"> 启用 LLM</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-llm-provider">提供商</label>
+                            <select id="cfg-llm-provider" name="provider">
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="deepseek">DeepSeek</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-llm-api-base">API Base</label>
+                            <input type="text" id="cfg-llm-api-base" name="api_base" placeholder="https://api.openai.com/v1">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-llm-model">模型</label>
+                            <input type="text" id="cfg-llm-model" name="model" placeholder="gpt-4">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-llm-api-key">API Key（测试用）</label>
+                            <input type="password" id="cfg-llm-api-key" placeholder="sk-..." autocomplete="off">
+                        </div>
+                    </form>
+                    <div class="flex gap-sm" style="margin-top: 12px;">
+                        <button type="button" class="btn btn-primary btn-sm" id="save-llm-btn">保存 LLM 配置</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="test-llm-btn">测试连接</button>
+                    </div>
+                </div>
+                <div id="tab-email" class="tab-pane" style="display: none;">
+                    <form id="config-email-form" class="form-grid">
+                        <div class="form-group">
+                            <label><input type="checkbox" name="enabled" id="cfg-email-enabled"> 启用邮件</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-email-smtp_host">SMTP 主机</label>
+                            <input type="text" id="cfg-email-smtp_host" name="smtp_host" placeholder="smtp.example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-email-smtp_port">SMTP 端口</label>
+                            <input type="number" id="cfg-email-smtp_port" name="smtp_port" value="587">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-email-username">用户名</label>
+                            <input type="text" id="cfg-email-username" name="username" placeholder="user@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-email-password">密码</label>
+                            <input type="password" id="cfg-email-password" name="password" placeholder="***" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-email-from_address">发件人</label>
+                            <input type="text" id="cfg-email-from_address" name="from_address" placeholder="noreply@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-email-to_addresses">收件人（多个用逗号分隔）</label>
+                            <input type="text" id="cfg-email-to_addresses" name="to_addresses" placeholder="a@x.com, b@x.com">
+                        </div>
+                    </form>
+                    <div class="flex gap-sm" style="margin-top: 12px;">
+                        <button type="button" class="btn btn-primary btn-sm" id="save-email-btn">保存邮件配置</button>
+                        <button type="button" class="btn btn-secondary btn-sm" id="test-email-btn">测试连接</button>
+                    </div>
+                </div>
+                <div id="tab-digest" class="tab-pane" style="display: none;">
+                    <form id="config-digest-form" class="form-grid">
+                        <div class="form-group">
+                            <label><input type="checkbox" name="enabled" id="cfg-digest-enabled"> 启用摘要推送</label>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-digest-schedules">Cron 时间（每行一个）</label>
+                            <textarea id="cfg-digest-schedules" name="schedules" rows="3" placeholder="0 9 * * * (每天 9:00)"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-digest-entries_per_feed">每订阅源条数</label>
+                            <input type="number" id="cfg-digest-entries_per_feed" name="entries_per_feed" min="1" value="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-digest-max_age_hours">最大年龄（小时）</label>
+                            <input type="number" id="cfg-digest-max_age_hours" name="max_age_hours" min="1" value="24">
+                        </div>
+                        <div class="form-group">
+                            <label for="cfg-digest-subject_prefix">邮件主题前缀</label>
+                            <input type="text" id="cfg-digest-subject_prefix" name="subject_prefix" placeholder="[MindWeaver]">
+                        </div>
+                    </form>
+                    <div class="flex gap-sm" style="margin-top: 12px;">
+                        <button type="button" class="btn btn-primary btn-sm" id="save-digest-btn">保存摘要配置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <table style="width: 100%; max-width: 600px;">
-        <tr>
-            <td style="font-weight: 500;">版本</td>
-            <td>MindWeaver v0.3.0</td>
-        </tr>
-        <tr>
-            <td style="font-weight: 500;">Phase 2 功能</td>
-            <td>
-                <span class="badge badge-success">内容提取</span>
-                <span class="badge badge-success">关键词提取</span>
-                <span class="badge badge-success">摘要生成</span>
-            </td>
-        </tr>
-    </table>
-</div>
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header flex items-center justify-between">
+                <span>邮件摘要</span>
+                <button type="button" class="btn btn-primary btn-sm" id="trigger-digest-btn">手动发送摘要</button>
+            </div>
+            <div class="card-body">
+                <p class="text-secondary" style="margin-bottom: 12px;">最近发送记录</p>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>发送时间</th>
+                                <th>状态</th>
+                                <th>条数</th>
+                                <th>主题</th>
+                            </tr>
+                        </thead>
+                        <tbody id="digest-logs-body">
+                            <tr><td colspan="4" class="text-center text-secondary">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="digest-logs-pagination" class="pagination" style="margin-top: 12px;"></div>
+            </div>
+        </div>
 
-<!-- Quick Links -->
-<div class="dashboard-section">
-    <h3>快捷链接</h3>
-    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">仪表盘</a>
-        <a href="{{ url_for('feeds') }}" class="btn btn-secondary">订阅源管理</a>
-        <a href="{{ url_for('filter_rules') }}" class="btn btn-secondary">过滤规则</a>
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">数据库信息</div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label>数据库路径</label>
+                    <input type="text" value="{{ config.db_path }}" readonly style="background-color: var(--color-bg-secondary);">
+                </div>
+                <div class="form-group">
+                    <label>数据库大小</label>
+                    <div id="db-size">计算中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">关于</div>
+            <div class="card-body">
+                <p><strong>MindWeaver</strong> - 个人知识/研究动态监控工具</p>
+                <p class="text-muted">版本: 0.4.0</p>
+                <p class="text-muted">
+                    自动抓取、去重、存储和检索 RSS/Atom 订阅源内容。
+                    支持全文抓取、智能过滤、AI 摘要等功能。
+                </p>
+                <div style="margin-top: 16px;">
+                    <a href="https://github.com" target="_blank" class="btn btn-secondary btn-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px;">
+                            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                        </svg>
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
-async function cleanupOldData() {
-    const days = parseInt(document.getElementById('cleanup-days').value);
+// Load settings
+async function loadSettings() {
+    const result = await API.settings.get();
+    if (result.success && result.data) {
+        const settings = result.data;
+        const form = document.getElementById('settings-form');
 
-    if (isNaN(days) || days < 1) {
-        App.showToast('请输入有效的天数', 'error');
+        // Populate form fields
+        Object.entries(settings).forEach(([key, value]) => {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (input) {
+                if (input.type === 'checkbox') {
+                    input.checked = Boolean(value);
+                } else {
+                    input.value = value || '';
+                }
+            }
+        });
+    }
+}
+
+// Calculate database size
+async function calculateDbSize() {
+    const result = await API.get('/api/settings/db-size');
+    if (result.success && result.data) {
+        const size = result.data.size;
+        const sizeMB = (size / (1024 * 1024)).toFixed(2);
+        document.getElementById('db-size').textContent = `${sizeMB} MB (${size.toLocaleString()} bytes)`;
+    }
+}
+
+// Handle form submission
+document.getElementById('settings-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = Forms.getFormData(form);
+
+    const result = await API.settings.update(formData);
+    if (result.success) {
+        Toast.success('设置保存成功');
+    } else {
+        Toast.error(result.error || '保存失败');
+    }
+});
+
+// --- Data management ---
+document.getElementById('cleanup-btn')?.addEventListener('click', async () => {
+    const days = parseInt(document.getElementById('cleanup-days').value, 10) || 90;
+    Forms.confirm(`确定要删除 ${days} 天前的所有条目吗？此操作不可恢复。`, {
+        title: '清理旧条目',
+        confirmText: '执行清理',
+        onConfirm: async () => {
+            const result = await API.system.cleanup(days);
+            if (result.success) {
+                Toast.success(result.message || `已清理 ${result.data?.deleted_count ?? 0} 条`);
+            } else {
+                Toast.error(result.error || '清理失败');
+            }
+        }
+    });
+});
+document.getElementById('export-entries-btn')?.addEventListener('click', () => API.system.exportEntries({ limit: 5000 }));
+document.getElementById('export-feeds-btn')?.addEventListener('click', () => API.system.exportFeeds());
+
+// --- Tabs ---
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+        btn.classList.add('active');
+        const tab = document.getElementById('tab-' + btn.dataset.tab);
+        if (tab) tab.style.display = 'block';
+    });
+});
+
+// --- System config load/save ---
+let systemConfig = null;
+async function loadSystemConfig() {
+    const result = await API.system.getConfig();
+    if (!result.success || !result.data) return;
+    systemConfig = result.data;
+    const d = result.data;
+    if (d.llm) {
+        document.getElementById('cfg-llm-enabled').checked = !!d.llm.enabled;
+        document.getElementById('cfg-llm-provider').value = d.llm.provider || 'openai';
+        document.getElementById('cfg-llm-api-base').value = d.llm.api_base || '';
+        document.getElementById('cfg-llm-model').value = d.llm.model || '';
+    }
+    if (d.email) {
+        document.getElementById('cfg-email-enabled').checked = !!d.email.enabled;
+        document.getElementById('cfg-email-smtp_host').value = d.email.smtp_host || '';
+        document.getElementById('cfg-email-smtp_port').value = d.email.smtp_port || 587;
+        document.getElementById('cfg-email-username').value = d.email.username || '';
+        document.getElementById('cfg-email-from_address').value = d.email.from_address || '';
+        document.getElementById('cfg-email-to_addresses').value = Array.isArray(d.email.to_addresses) ? d.email.to_addresses.join(', ') : (d.email.to_addresses || '');
+    }
+    if (d.digest) {
+        document.getElementById('cfg-digest-enabled').checked = !!d.digest.enabled;
+        document.getElementById('cfg-digest-schedules').value = Array.isArray(d.digest.schedules) ? d.digest.schedules.join('\n') : (d.digest.schedules || '');
+        document.getElementById('cfg-digest-entries_per_feed').value = d.digest.entries_per_feed ?? 5;
+        document.getElementById('cfg-digest-max_age_hours').value = d.digest.max_age_hours ?? 24;
+        document.getElementById('cfg-digest-subject_prefix').value = d.digest.subject_prefix || '';
+    }
+}
+
+document.getElementById('save-llm-btn')?.addEventListener('click', async () => {
+    const form = document.getElementById('config-llm-form');
+    const data = {
+        enabled: document.getElementById('cfg-llm-enabled').checked,
+        provider: document.getElementById('cfg-llm-provider').value,
+        api_base: document.getElementById('cfg-llm-api-base').value || null,
+        model: document.getElementById('cfg-llm-model').value || null
+    };
+    const result = await API.system.updateLlmConfig(data);
+    if (result.success) { Toast.success(result.message || '已保存'); } else { Toast.error(result.error || '保存失败'); }
+});
+document.getElementById('test-llm-btn')?.addEventListener('click', async () => {
+    const apiKey = document.getElementById('cfg-llm-api-key').value;
+    if (!apiKey) { Toast.error('请填写 API Key 后再测试'); return; }
+    const result = await API.system.testLlm({
+        provider: document.getElementById('cfg-llm-provider').value,
+        api_key: apiKey,
+        api_base: document.getElementById('cfg-llm-api-base').value || undefined,
+        model: document.getElementById('cfg-llm-model').value || undefined
+    });
+    if (result.success) { Toast.success(result.message || '连接成功'); } else { Toast.error(result.error || '连接失败'); }
+});
+
+document.getElementById('save-email-btn')?.addEventListener('click', async () => {
+    const toAddresses = document.getElementById('cfg-email-to_addresses').value;
+    const data = {
+        enabled: document.getElementById('cfg-email-enabled').checked,
+        smtp_host: document.getElementById('cfg-email-smtp_host').value || null,
+        smtp_port: parseInt(document.getElementById('cfg-email-smtp_port').value, 10) || null,
+        username: document.getElementById('cfg-email-username').value || null,
+        password: document.getElementById('cfg-email-password').value || null,
+        from_address: document.getElementById('cfg-email-from_address').value || null,
+        to_addresses: toAddresses ? toAddresses.split(',').map(s => s.trim()).filter(Boolean) : []
+    };
+    const result = await API.system.updateEmailConfig(data);
+    if (result.success) { Toast.success(result.message || '已保存'); } else { Toast.error(result.error || '保存失败'); }
+});
+document.getElementById('test-email-btn')?.addEventListener('click', async () => {
+    const data = {
+        smtp_host: document.getElementById('cfg-email-smtp_host').value,
+        smtp_port: parseInt(document.getElementById('cfg-email-smtp_port').value, 10) || 587,
+        username: document.getElementById('cfg-email-username').value,
+        password: document.getElementById('cfg-email-password').value
+    };
+    if (!data.smtp_host || !data.username || !data.password) { Toast.error('请填写 SMTP 主机、用户名和密码'); return; }
+    const result = await API.system.testEmail(data);
+    if (result.success) { Toast.success(result.message || '连接成功'); } else { Toast.error(result.error || '连接失败'); }
+});
+
+document.getElementById('save-digest-btn')?.addEventListener('click', async () => {
+    const schedulesStr = document.getElementById('cfg-digest-schedules').value;
+    const data = {
+        enabled: document.getElementById('cfg-digest-enabled').checked,
+        schedules: schedulesStr ? schedulesStr.split('\n').map(s => s.trim()).filter(Boolean) : [],
+        entries_per_feed: parseInt(document.getElementById('cfg-digest-entries_per_feed').value, 10) || 5,
+        max_age_hours: parseInt(document.getElementById('cfg-digest-max_age_hours').value, 10) || 24,
+        subject_prefix: document.getElementById('cfg-digest-subject_prefix').value || null
+    };
+    const result = await API.system.updateDigestConfig(data);
+    if (result.success) { Toast.success(result.message || '已保存'); } else { Toast.error(result.error || '保存失败'); }
+});
+
+// --- Digest trigger & logs ---
+let digestLogsPage = 1;
+async function loadDigestLogs(page) {
+    page = page || 1;
+    const result = await API.scheduler.getDigestLogs({ page, page_size: 10 });
+    const tbody = document.getElementById('digest-logs-body');
+    if (!result.success || !result.data) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-secondary">加载失败</td></tr>';
         return;
     }
-
-    App.modal.confirm(
-        `确定要删除 ${days} 天前的所有文章吗？`,
-        async () => {
-            App.showToast('正在清理数据...', 'info');
-
-            try {
-                const response = await App.api.post('/api/system/cleanup', { days: days });
-
-                if (response.success) {
-                    const count = response.data?.deleted_count || 0;
-                    App.showToast(`清理完成：删除了 ${count} 篇文章`, 'success');
-                } else {
-                    App.showToast(response.error || '清理失败', 'error');
-                }
-            } catch (error) {
-                console.error('清理错误:', error);
-                App.showToast('清理失败', 'error');
-            }
-        },
-        { title: '确认清理', danger: true }
-    );
+    const { logs, total, page_size } = result.data;
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-secondary">暂无发送记录</td></tr>';
+    } else {
+        tbody.innerHTML = logs.map(log => {
+            const time = log.sent_at ? new Date(log.sent_at).toLocaleString('zh-CN') : '-';
+            const status = log.status === 'success' ? '<span class="text-success">成功</span>' : (log.status === 'failed' ? '<span class="text-error">失败</span>' : log.status);
+            return `<tr><td>${time}</td><td>${status}</td><td>${log.entry_count ?? 0}</td><td>${log.subject || '-'}</td></tr>`;
+        }).join('');
+    }
+    const pagination = document.getElementById('digest-logs-pagination');
+    const totalPages = Math.max(1, Math.ceil(total / page_size));
+    if (totalPages <= 1) pagination.innerHTML = ''; else {
+        pagination.innerHTML = `
+            <button type="button" class="btn btn-ghost btn-sm" ${page <= 1 ? 'disabled' : ''} data-page="${page - 1}">上一页</button>
+            <span class="text-secondary" style="margin: 0 8px;">${page} / ${totalPages}</span>
+            <button type="button" class="btn btn-ghost btn-sm" ${page >= totalPages ? 'disabled' : ''} data-page="${page + 1}">下一页</button>
+        `;
+        pagination.querySelectorAll('button[data-page]').forEach(b => b.addEventListener('click', () => loadDigestLogs(parseInt(b.dataset.page, 10))));
+    }
 }
+document.getElementById('trigger-digest-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('trigger-digest-btn');
+    btn.disabled = true;
+    const result = await API.scheduler.triggerDigest();
+    btn.disabled = false;
+    if (result.success) {
+        Toast.success(result.message || '摘要已发送');
+        loadDigestLogs(1);
+    } else {
+        Toast.error(result.error || '发送失败');
+    }
+});
+
+// Initial load
+loadSettings();
+calculateDbSize();
+loadSystemConfig();
+loadDigestLogs(1);
+
+// Register keyboard shortcuts
+Keyboard.register('s', () => {
+    document.getElementById('settings-form')?.querySelector('[type="submit"]')?.click();
+}, '保存设置');
 </script>
 {% endblock %}

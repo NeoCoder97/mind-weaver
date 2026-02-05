@@ -36,12 +36,13 @@ class FeedModel(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     fetch_interval_minutes: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
     max_entries_per_fetch: Mapped[int] = mapped_column(
-        Integer, default=100, nullable=False,
-        comment="Maximum number of entries to fetch per update (0=no limit)"
+        Integer,
+        default=100,
+        nullable=False,
+        comment="Maximum number of entries to fetch per update (0=no limit)",
     )
     fetch_only_recent: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False,
-        comment="Only fetch entries from last 30 days"
+        Boolean, default=False, nullable=False, comment="Only fetch entries from last 30 days"
     )
 
     # Timestamps
@@ -83,7 +84,9 @@ feed_categories = Table(
     "feed_categories",
     Base.metadata,
     Column("feed_id", Integer, ForeignKey("feeds.id", ondelete="CASCADE"), primary_key=True),
-    Column("category_id", Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "category_id", Integer, ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True
+    ),
     Index("ix_feed_categories_feed_id", "feed_id"),
     Index("ix_feed_categories_category_id", "category_id"),
 )
@@ -99,14 +102,14 @@ class FeedBase(BaseModel):
     name: Optional[str] = Field(None, max_length=500, description="Feed name")
     description: Optional[str] = Field(None, description="Feed description")
     enabled: bool = Field(True, description="Whether feed is enabled")
-    fetch_interval_minutes: int = Field(60, ge=10, le=10080, description="Fetch interval in minutes")
+    fetch_interval_minutes: int = Field(
+        60, ge=10, le=10080, description="Fetch interval in minutes"
+    )
     max_entries_per_fetch: int = Field(
-        default=100, ge=0, le=1000,
-        description="Max entries per fetch (0-1000, 0=no limit)"
+        default=100, ge=0, le=1000, description="Max entries per fetch (0-1000, 0=no limit)"
     )
     fetch_only_recent: bool = Field(
-        default=False,
-        description="Only fetch entries from last 30 days"
+        default=False, description="Only fetch entries from last 30 days"
     )
 
 
@@ -123,9 +126,7 @@ class FeedUpdate(BaseModel):
     description: Optional[str] = None
     enabled: Optional[bool] = None
     fetch_interval_minutes: Optional[int] = Field(None, ge=10, le=10080)
-    max_entries_per_fetch: Optional[int] = Field(
-        default=None, ge=0, le=1000
-    )
+    max_entries_per_fetch: Optional[int] = Field(default=None, ge=0, le=1000)
     fetch_only_recent: Optional[bool] = None
 
 

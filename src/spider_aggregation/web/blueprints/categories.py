@@ -28,28 +28,16 @@ class CategoryBlueprint(CRUDBlueprint):
     def _register_custom_routes(self):
         """Register custom category-specific routes."""
         # Override default list route to support enabled_only parameter
-        self.blueprint.add_url_rule(
-            "",
-            view_func=self._list,
-            methods=["GET"]
-        )
+        self.blueprint.add_url_rule("", view_func=self._list, methods=["GET"])
         # Get feeds for a category
         self.blueprint.add_url_rule(
-            "/<int:category_id>/feeds",
-            view_func=self._get_feeds,
-            methods=["GET"]
+            "/<int:category_id>/feeds", view_func=self._get_feeds, methods=["GET"]
         )
         # Get category statistics
-        self.blueprint.add_url_rule(
-            "/stats",
-            view_func=self._get_stats,
-            methods=["GET"]
-        )
+        self.blueprint.add_url_rule("/stats", view_func=self._get_stats, methods=["GET"])
         # Get entry statistics for a category
         self.blueprint.add_url_rule(
-            "/<int:category_id>/entries/stats",
-            view_func=self._entries_stats,
-            methods=["GET"]
+            "/<int:category_id>/entries/stats", view_func=self._entries_stats, methods=["GET"]
         )
 
     def _list(self):
@@ -102,6 +90,7 @@ class CategoryBlueprint(CRUDBlueprint):
             Dictionary with feed_count included
         """
         from spider_aggregation.storage.database import DatabaseManager
+
         db_manager = DatabaseManager(self.db_path)
 
         with db_manager.session() as session:
@@ -164,9 +153,7 @@ class CategoryBlueprint(CRUDBlueprint):
             # Check if already exists
             if self.check_exists(repo, data):
                 return api_response(
-                    success=False,
-                    error=f"{self.get_resource_name()}已存在",
-                    status=400
+                    success=False, error=f"{self.get_resource_name()}已存在", status=400
                 )
 
             try:
@@ -204,9 +191,7 @@ class CategoryBlueprint(CRUDBlueprint):
 
             if not item:
                 return api_response(
-                    success=False,
-                    error=f"未找到{self.get_resource_name()}",
-                    status=404
+                    success=False, error=f"未找到{self.get_resource_name()}", status=404
                 )
 
             try:
@@ -247,10 +232,7 @@ class CategoryBlueprint(CRUDBlueprint):
             total = repo.get_feed_count_by_category(category_id)
             data = [feed_to_dict(f) for f in feeds]
 
-        return api_response(
-            success=True,
-            data={"feeds": data, "total": total}
-        )
+        return api_response(success=True, data={"feeds": data, "total": total})
 
     def _get_stats(self):
         """Get statistics for all categories.
@@ -300,7 +282,4 @@ class CategoryBlueprint(CRUDBlueprint):
 
             stats = entry_repo.get_stats_by_category(category_id)
 
-        return api_response(
-            success=True,
-            data=stats
-        )
+        return api_response(success=True, data=stats)

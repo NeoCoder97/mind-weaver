@@ -39,8 +39,7 @@ def get_dialect(name: str) -> BaseDialect:
     if name_lower not in _DIALECT_REGISTRY:
         supported = ", ".join(sorted(set(_DIALECT_REGISTRY.keys())))
         raise ValueError(
-            f"Unsupported database dialect: {name!r}. "
-            f"Supported dialects: {supported}"
+            f"Unsupported database dialect: {name!r}. " f"Supported dialects: {supported}"
         )
 
     dialect_class = _DIALECT_REGISTRY[name_lower]

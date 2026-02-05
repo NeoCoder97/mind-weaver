@@ -97,6 +97,7 @@ class SQLiteDialect(BaseDialect):
         Note:
             Enables foreign keys and WAL mode for better concurrency.
         """
+
         @event.listens_for(engine, "connect")
         def set_sqlite_pragma(dbapi_conn, connection_record):
             cursor = dbapi_conn.cursor()

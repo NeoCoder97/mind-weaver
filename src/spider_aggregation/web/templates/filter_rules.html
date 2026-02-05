@@ -1,93 +1,240 @@
 {% extends "base.html" %}
 
-{% block title %}过滤规则 - MindWeaver{% endblock %}
+{% block title %}过滤规则管理 - MindWeaver{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h2>过滤规则</h2>
-    <button type="button" class="btn btn-primary" onclick="showAddFilterRuleModal()">+ 添加规则</button>
-</div>
+<div class="page">
+    <div class="page-header">
+        <h2 class="page-title">过滤规则管理</h2>
+        <div class="page-actions">
+            <button class="btn btn-primary" id="add-rule-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                添加规则
+            </button>
+        </div>
+    </div>
 
-<div class="table-container">
-    <table>
-        <thead>
-            <tr>
-                <th>名称</th>
-                <th>类型</th>
-                <th>匹配方式</th>
-                <th>模式</th>
-                <th>优先级</th>
-                <th>状态</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for rule in rules %}
-            <tr data-rule-id="{{ rule.id }}">
-                <td>
-                    <strong>{{ rule.name }}</strong>
-                </td>
-                <td>
-                    <span class="badge badge-primary">{{ rule.rule_type }}</span>
-                </td>
-                <td>
-                    <span class="badge badge-{{ 'success' if rule.match_type == 'include' else 'error' }}">
-                        {{ "通过" if rule.match_type == 'include' else "过滤" }}
-                    </span>
-                </td>
-                <td style="font-family: monospace; max-width: 300px; overflow: hidden; text-overflow: ellipsis;" title="{{ rule.pattern }}">
-                    {{ rule.pattern[:50] }}{% if rule.pattern|length > 50 %}...{% endif %}
-                </td>
-                <td>{{ rule.priority }}</td>
-                <td>
-                    <span class="feed-status {{ 'enabled' if rule.enabled else 'disabled' }}">
-                        {{ "启用" if rule.enabled else "禁用" }}
-                    </span>
-                </td>
-                <td>
-                    <div class="btn-group">
-                        <button type="button" class="btn-icon" onclick="showEditFilterRuleModal({{ rule.id }})" title="编辑">✏️</button>
-                        <button type="button" class="btn-icon" onclick="toggleFilterRule({{ rule.id }})" title="{{ '禁用' if rule.enabled else '启用' }}">
-                            {{ '⏸️' if rule.enabled else '▶️' }}
-                        </button>
-                        <button type="button" class="btn-icon" onclick="deleteFilterRule({{ rule.id }})" title="删除">🗑️</button>
-                    </div>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="7" class="empty-state">
-                    <p>暂无过滤规则</p>
-                    <p><button type="button" class="btn btn-primary" onclick="showAddFilterRuleModal()">+ 添加第一条规则</button></p>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
-
-<div class="dashboard-section" style="margin-top: 2rem;">
-    <h3>关于过滤规则</h3>
-    <p style="color: var(--text-muted); margin-bottom: 1rem;">
-        过滤规则允许您根据关键词、正则表达式、标签或语言自动过滤新抓取的文章。
-    </p>
-    <ul style="color: var(--text-muted); padding-left: 1.5rem;">
-        <li><strong>关键词：</strong>匹配标题或内容中包含精确关键词的文章</li>
-        <li><strong>正则表达式：</strong>使用正则表达式进行高级模式匹配</li>
-        <li><strong>标签：</strong>匹配具有特定标签的文章</li>
-        <li><strong>语言：</strong>匹配特定语言的文章（en、zh、ja 等）</li>
-    </ul>
-    <p style="color: var(--text-muted); margin-top: 1rem;">
-        <strong>通过（Include）：</strong>匹配的文章会通过过滤器<br>
-        <strong>过滤（Exclude）：</strong>匹配的文章会被过滤掉
-    </p>
+    <div class="page-content">
+        <div id="rules-table"></div>
+    </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/forms.js') }}"></script>
+{% block extra_js %}
 <script>
-    // Store rule data for editing
-    window.ruleData = {{ rules|tojson|safe }};
+// Initialize filter rules table
+const rulesTable = new DataTable({
+    container: '#rules-table',
+    dataUrl: '/api/filter-rules',
+    loadData: async (params) => {
+        // Filter rules API returns flat array, handle pagination locally
+        const result = await API.filterRules.list();
+        if (result.success || result.data) {
+            let data = result.data || result;
+            const total = data.length;
+            const start = (params.page - 1) * params.pageSize;
+            const end = start + params.pageSize;
+            const items = data.slice(start, end);
+            return { items, total };
+        }
+        return { items: [], total: 0 };
+    },
+    columns: [
+        {
+            key: 'rule_type',
+            label: '类型',
+            render: (row) => {
+                const typeLabels = {
+                    keyword: '关键词',
+                    regex: '正则表达式',
+                    tag: '标签',
+                    language: '语言'
+                };
+                const typeClasses = {
+                    keyword: 'info',
+                    regex: 'warning',
+                    tag: 'success',
+                    language: 'default'
+                };
+                return `<span class="badge badge-${typeClasses[row.rule_type] || 'default'}">${typeLabels[row.rule_type] || row.rule_type}</span>`;
+            }
+        },
+        {
+            key: 'pattern',
+            label: '模式',
+            render: (row) => {
+                return `<code>${row.pattern}</code>`;
+            }
+        },
+        {
+            key: 'action',
+            label: '动作',
+            render: (row) => {
+                return row.action === 'block' ?
+                    '<span class="badge badge-error">屏蔽</span>' :
+                    '<span class="badge badge-success">允许</span>';
+            }
+        },
+        {
+            key: 'enabled',
+            label: '状态',
+            type: 'status'
+        }
+    ],
+    rowActions: (row) => [
+        {
+            name: 'toggle',
+            label: row.enabled ? '禁用' : '启用',
+            icon: row.enabled ?
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>' :
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4 11H8v-2h8v2z"/></svg>',
+            onClick: `toggleRule(${row.id}, ${row.enabled})`
+        },
+        {
+            name: 'edit',
+            label: '编辑',
+            icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
+            onClick: `editRule(${row.id})`
+        },
+        {
+            name: 'delete',
+            label: '删除',
+            icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+            danger: true,
+            onClick: `deleteRule(${row.id})`
+        }
+    ],
+    rowId: 'id',
+    pageSize: 50,
+    emptyMessage: '暂无过滤规则，点击上方按钮添加'
+});
+
+// Add rule button
+document.getElementById('add-rule-btn')?.addEventListener('click', () => {
+    showRuleForm();
+});
+
+// Show rule form (add/edit)
+async function showRuleForm(ruleId = null) {
+    let ruleData = {};
+
+    // Load rule data if editing
+    if (ruleId) {
+        const result = await API.filterRules.get(ruleId);
+        if (result.success) {
+            ruleData = result.data;
+        } else {
+            Toast.error('加载数据失败');
+            return;
+        }
+    }
+
+    const isEdit = !!ruleId;
+    const title = isEdit ? '编辑过滤规则' : '添加过滤规则';
+
+    const formHTML = `
+        <form id="rule-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="rule-type">规则类型 *</label>
+                    <select id="rule-type" name="rule_type" required>
+                        <option value="">选择类型</option>
+                        <option value="keyword" ${ruleData.rule_type === 'keyword' ? 'selected' : ''}>关键词匹配</option>
+                        <option value="regex" ${ruleData.rule_type === 'regex' ? 'selected' : ''}>正则表达式</option>
+                        <option value="tag" ${ruleData.rule_type === 'tag' ? 'selected' : ''}>标签匹配</option>
+                        <option value="language" ${ruleData.rule_type === 'language' ? 'selected' : ''}>语言过滤</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rule-action">动作 *</label>
+                    <select id="rule-action" name="action" required>
+                        <option value="block" ${ruleData.action === 'block' ? 'selected' : ''}>屏蔽</option>
+                        <option value="allow" ${ruleData.action === 'allow' ? 'selected' : ''}>允许</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="rule-pattern">匹配模式 *</label>
+                <input type="text" id="rule-pattern" name="pattern" required value="${ruleData.pattern || ''}" placeholder="根据类型输入关键词、正则表达式、标签或语言代码">
+                <div class="form-help">
+                    关键词：精确匹配；正则：使用正则语法；标签：匹配文章标签；语言：ISO 639-1 语言代码（如 zh, en）
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="rule-priority">优先级</label>
+                <input type="number" id="rule-priority" name="priority" min="0" max="100" value="${ruleData.priority || 50}">
+                <div class="form-help">数字越大优先级越高，默认 50</div>
+            </div>
+        </form>
+    `;
+
+    const footer = `
+        <button class="btn btn-secondary" data-cancel>取消</button>
+        <button type="submit" class="btn btn-primary" form="rule-form">${isEdit ? '保存' : '添加'}</button>
+    `;
+
+    Forms.showModal(formHTML, { title, footer });
+
+    // Handle form submission
+    const form = document.getElementById('rule-form');
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = Forms.getFormData(form);
+        formData.priority = parseInt(formData.priority) || 50;
+
+        const result = await (isEdit ?
+            API.filterRules.update(ruleId, formData) :
+            API.filterRules.create(formData)
+        );
+
+        if (result.success) {
+            Toast.success(isEdit ? '规则更新成功' : '规则添加成功');
+            Forms.closeModal();
+            rulesTable.refresh();
+        } else {
+            Toast.error(result.error || '操作失败');
+        }
+    });
+}
+
+// Edit rule
+function editRule(id) {
+    showRuleForm(id);
+}
+
+// Toggle rule
+async function toggleRule(id, currentStatus) {
+    const result = await API.filterRules.update(id, { enabled: !currentStatus });
+    if (result.success) {
+        Toast.success(currentStatus ? '已禁用' : '已启用');
+        rulesTable.refresh();
+    } else {
+        Toast.error(result.error || '操作失败');
+    }
+}
+
+// Delete rule
+function deleteRule(id) {
+    Forms.confirm('确定要删除这条过滤规则吗？', {
+        title: '删除规则',
+        confirmText: '删除',
+        onConfirm: async () => {
+            const result = await API.filterRules.delete(id);
+            if (result.success) {
+                Toast.success('删除成功');
+                rulesTable.refresh();
+            } else {
+                Toast.error(result.error || '删除失败');
+            }
+        }
+    });
+}
+
+// Register keyboard shortcuts
+Keyboard.register('n', () => showRuleForm(), '新建规则');
+Keyboard.register('r', () => rulesTable.refresh(), '刷新列表');
 </script>
 {% endblock %}

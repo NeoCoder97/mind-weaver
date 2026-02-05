@@ -229,9 +229,7 @@ class EntryCategoryQueryMixin(Generic[ModelType]):
             List of matching model instances
         """
         q = self._build_entry_category_query(category_id)
-        q = q.filter(
-            (self.model.title.contains(query)) | (self.model.content.contains(query))
-        )
+        q = q.filter((self.model.title.contains(query)) | (self.model.content.contains(query)))
         return q.order_by(desc(self.model.published_at)).limit(limit).offset(offset).all()
 
     def get_recent_by_category(
@@ -360,7 +358,8 @@ class FilterQueryMixin(Generic[ModelType]):
 
         # Apply simple equality filters
         simple_filters = {
-            k: v for k, v in filters.items()
+            k: v
+            for k, v in filters.items()
             if k not in self._get_complex_filter_keys() and v is not None
         }
         for key, value in simple_filters.items():
@@ -368,10 +367,7 @@ class FilterQueryMixin(Generic[ModelType]):
                 query = query.filter(getattr(self.model, key) == value)
 
         # Apply complex filters
-        complex_filters = {
-            k: v for k, v in filters.items()
-            if k in self._get_complex_filter_keys()
-        }
+        complex_filters = {k: v for k, v in filters.items() if k in self._get_complex_filter_keys()}
         query = self._apply_complex_filters(query, complex_filters)
 
         # Apply ordering
@@ -397,7 +393,8 @@ class FilterQueryMixin(Generic[ModelType]):
 
         # Apply simple equality filters
         simple_filters = {
-            k: v for k, v in filters.items()
+            k: v
+            for k, v in filters.items()
             if k not in self._get_complex_filter_keys() and v is not None
         }
         for key, value in simple_filters.items():
@@ -405,10 +402,7 @@ class FilterQueryMixin(Generic[ModelType]):
                 query = query.filter(getattr(self.model, key) == value)
 
         # Apply complex filters
-        complex_filters = {
-            k: v for k, v in filters.items()
-            if k in self._get_complex_filter_keys()
-        }
+        complex_filters = {k: v for k, v in filters.items() if k in self._get_complex_filter_keys()}
         query = self._apply_complex_filters(query, complex_filters)
 
         return query.count()
@@ -508,9 +502,7 @@ class CategoryRelationshipMixin:
 
         # Fetch all category objects
         categories = (
-            self.session.query(CategoryModel)
-            .filter(CategoryModel.id.in_(category_ids))
-            .all()
+            self.session.query(CategoryModel).filter(CategoryModel.id.in_(category_ids)).all()
         )
 
         # Replace existing categories
@@ -524,9 +516,7 @@ class CategoryRelationshipMixin:
 
         return feed
 
-    def clear_categories_from_feed(
-        self, feed: "FeedModel", update_timestamp: bool = True
-    ) -> None:
+    def clear_categories_from_feed(self, feed: "FeedModel", update_timestamp: bool = True) -> None:
         """Clear all categories from a feed.
 
         Args:
@@ -578,6 +568,7 @@ class JSONFieldMixin(Generic[ModelType]):
         except (TypeError, ValueError) as e:
             # Log error but don't fail - store as string representation
             import warnings
+
             warnings.warn(
                 f"Failed to serialize {field_name} to JSON: {e}. "
                 f"Storing as string representation instead.",
@@ -586,9 +577,7 @@ class JSONFieldMixin(Generic[ModelType]):
             )
             return str(value)
 
-    def _deserialize_json_field(
-        self, field_name: str, default: Any = None
-    ) -> Any:
+    def _deserialize_json_field(self, field_name: str, default: Any = None) -> Any:
         """Deserialize a JSON field from storage.
 
         Args:
@@ -610,13 +599,11 @@ class JSONFieldMixin(Generic[ModelType]):
 
         try:
             return json.loads(value)
-        except (json.JSONDecodeError, TypeError):
+        except json.JSONDecodeError, TypeError:
             # If not valid JSON, return as-is or default
             return default if default is not None else value
 
-    def _serialize_json_fields(
-        self, data: dict[str, Any], json_fields: set[str]
-    ) -> dict[str, Any]:
+    def _serialize_json_fields(self, data: dict[str, Any], json_fields: set[str]) -> dict[str, Any]:
         """Serialize multiple JSON fields in a data dict.
 
         This is useful when preparing data for database operations.
@@ -635,9 +622,7 @@ class JSONFieldMixin(Generic[ModelType]):
         """
         for field_name in json_fields:
             if field_name in data and data[field_name] is not None:
-                data[field_name] = self._serialize_json_field(
-                    field_name, data[field_name]
-                )
+                data[field_name] = self._serialize_json_field(field_name, data[field_name])
         return data
 
     def get_json_fields(self) -> set[str]:

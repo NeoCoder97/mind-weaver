@@ -129,6 +129,7 @@ def init_db(drop_all: bool = False, use_migrations: bool = True) -> None:
         - Existing DB: alembic stamp head
     """
     from spider_aggregation.logger import get_logger
+
     logger = get_logger(__name__)
 
     engine = get_engine()
@@ -145,7 +146,7 @@ def init_db(drop_all: bool = False, use_migrations: bool = True) -> None:
         from sqlalchemy import inspect, text
 
         inspector = inspect(engine)
-        has_alembic = 'alembic_version' in inspector.get_table_names()
+        has_alembic = "alembic_version" in inspector.get_table_names()
 
         if not has_alembic and not drop_all:
             # Fresh database with existing tables (created by old init_db)

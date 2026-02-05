@@ -243,9 +243,7 @@ class Deduplicator:
         return {
             "link_hash": compute_link_hash(entry.get("link")),
             "title_hash": compute_title_hash(entry.get("title")),
-            "content_hash": compute_content_hash(
-                entry.get("content") or entry.get("summary")
-            ),
+            "content_hash": compute_content_hash(entry.get("content") or entry.get("summary")),
         }
 
     def get_stats(self) -> dict:

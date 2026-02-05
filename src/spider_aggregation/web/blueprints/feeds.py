@@ -28,33 +28,27 @@ class FeedBlueprint(CRUDBlueprint):
         """Register custom feed-specific routes."""
         # Manual fetch endpoint
         self.blueprint.add_url_rule(
-            "/<int:feed_id>/fetch",
-            view_func=self._fetch_feed,
-            methods=["POST"]
+            "/<int:feed_id>/fetch", view_func=self._fetch_feed, methods=["POST"]
         )
         # Get categories for a feed
         self.blueprint.add_url_rule(
-            "/<int:feed_id>/categories",
-            view_func=self._get_categories,
-            methods=["GET"]
+            "/<int:feed_id>/categories", view_func=self._get_categories, methods=["GET"]
         )
         # Set categories for a feed
         self.blueprint.add_url_rule(
-            "/<int:feed_id>/categories",
-            view_func=self._set_categories,
-            methods=["PUT", "POST"]
+            "/<int:feed_id>/categories", view_func=self._set_categories, methods=["PUT", "POST"]
         )
         # Add category to feed
         self.blueprint.add_url_rule(
             "/<int:feed_id>/categories/<int:category_id>",
             view_func=self._add_category,
-            methods=["PUT", "POST"]
+            methods=["PUT", "POST"],
         )
         # Remove category from feed
         self.blueprint.add_url_rule(
             "/<int:feed_id>/categories/<int:category_id>",
             view_func=self._remove_category,
-            methods=["DELETE"]
+            methods=["DELETE"],
         )
 
     def get_repository_class(self):
@@ -136,7 +130,9 @@ class FeedBlueprint(CRUDBlueprint):
             filter_service = FilterService()
 
             from spider_aggregation.storage.repositories.entry_repo import EntryRepository
-            from spider_aggregation.storage.repositories.filter_rule_repo import FilterRuleRepository
+            from spider_aggregation.storage.repositories.filter_rule_repo import (
+                FilterRuleRepository,
+            )
 
             entry_repo = EntryRepository(session)
             filter_rule_repo = FilterRuleRepository(session)
@@ -153,9 +149,7 @@ class FeedBlueprint(CRUDBlueprint):
             if not fetch_result.success:
                 repo.update_fetch_info(feed, increment_error=True, last_error=fetch_result.error)
                 return api_response(
-                    success=False,
-                    error=fetch_result.error or "获取订阅源失败",
-                    status=500
+                    success=False, error=fetch_result.error or "获取订阅源失败", status=500
                 )
 
             # Parse entries
@@ -164,11 +158,7 @@ class FeedBlueprint(CRUDBlueprint):
                 parsed = parser.parse_entry(entry_data, feed_id=feed.id)
 
                 # Check for duplicates
-                duplicate = deduplicator.check_duplicate(
-                    parsed,
-                    entry_repo,
-                    feed_id=feed.id
-                )
+                duplicate = deduplicator.check_duplicate(parsed, entry_repo, feed_id=feed.id)
 
                 if duplicate.is_duplicate:
                     continue
@@ -180,29 +170,28 @@ class FeedBlueprint(CRUDBlueprint):
 
                 # Create entry
                 from spider_aggregation.models import EntryCreate
+
                 entry_create = EntryCreate(**parsed)
                 entry_repo.create(entry_create)
                 entries_created += 1
 
             # Update fetch info
             from datetime import datetime
+
             repo.update_fetch_info(
                 feed,
                 last_fetched_at=datetime.utcnow(),
                 reset_errors=True,
                 etag=fetch_result.etag,
-                last_modified=fetch_result.last_modified
+                last_modified=fetch_result.last_modified,
             )
 
             logger.info(f"Manually fetched feed {feed.id}: {entries_created} new entries")
 
             return api_response(
                 success=True,
-                data={
-                    "entries_created": entries_created,
-                    "feed": self.serialize(feed)
-                },
-                message=f"成功获取 {entries_created} 条新内容"
+                data={"entries_created": entries_created, "feed": self.serialize(feed)},
+                message=f"成功获取 {entries_created} 条新内容",
             )
 
     def _get_categories(self, feed_id: int):
@@ -259,14 +248,11 @@ class FeedBlueprint(CRUDBlueprint):
             session.refresh(feed)
 
             from spider_aggregation.web.serializers import category_to_dict
+
             categories = repo.get_categories(feed)
             data = [category_to_dict(c) for c in categories]
 
-        return api_response(
-            success=True,
-            data=data,
-            message="分类设置成功"
-        )
+        return api_response(success=True, data=data, message="分类设置成功")
 
     def _add_category(self, feed_id: int, category_id: int):
         """Add a category to a feed.
@@ -299,14 +285,11 @@ class FeedBlueprint(CRUDBlueprint):
             feed_repo.add_category(feed, category)
 
             from spider_aggregation.web.serializers import category_to_dict
+
             categories = feed_repo.get_categories(feed)
             data = [category_to_dict(c) for c in categories]
 
-        return api_response(
-            success=True,
-            data=data,
-            message="分类添加成功"
-        )
+        return api_response(success=True, data=data, message="分类添加成功")
 
     def _remove_category(self, feed_id: int, category_id: int):
         """Remove a category from a feed.
@@ -339,11 +322,8 @@ class FeedBlueprint(CRUDBlueprint):
             feed_repo.remove_category(feed, category)
 
             from spider_aggregation.web.serializers import category_to_dict
+
             categories = feed_repo.get_categories(feed)
             data = [category_to_dict(c) for c in categories]
 
-        return api_response(
-            success=True,
-            data=data,
-            message="分类移除成功"
-        )
+        return api_response(success=True, data=data, message="分类移除成功")

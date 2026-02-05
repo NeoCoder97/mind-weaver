@@ -49,7 +49,7 @@ class EntryData:
 
             try:
                 tags = json.loads(tags)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 tags = []
 
         return cls(
@@ -77,7 +77,7 @@ class EntryData:
 
             try:
                 tags = json.loads(tags)
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError, TypeError:
                 tags = []
 
         return cls(

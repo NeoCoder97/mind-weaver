@@ -190,13 +190,13 @@ const API = {
             return API.post('/api/entries/batch/delete', { ids });
         },
         markRead(id) {
-            return API.put(`/api/entries/${id}`, { is_read: true });
+            return API.put(`/api/entries/${id}`, { enabled: false });
         },
         batchMarkRead(ids) {
             return API.post('/api/entries/batch/mark-read', { ids });
         },
         markUnread(id) {
-            return API.put(`/api/entries/${id}`, { is_read: false });
+            return API.put(`/api/entries/${id}`, { enabled: true });
         }
     },
 
@@ -224,9 +224,6 @@ const API = {
         },
         fetch(id) {
             return API.post(`/api/feeds/${id}/fetch`);
-        },
-        validate(data) {
-            return API.post('/api/feeds/validate', data);
         }
     },
 
@@ -248,6 +245,9 @@ const API = {
         },
         delete(id) {
             return API.delete(`/api/categories/${id}`);
+        },
+        toggle(id) {
+            return API.patch(`/api/categories/${id}/toggle`);
         }
     },
 
@@ -287,6 +287,12 @@ const API = {
         },
         trigger() {
             return API.post('/api/scheduler/fetch-all');
+        },
+        triggerDigest() {
+            return API.post('/api/scheduler/digest/trigger');
+        },
+        getDigestLogs(params) {
+            return API.get('/api/scheduler/digest/logs', params);
         }
     },
 
@@ -308,6 +314,52 @@ const API = {
         },
         update(data) {
             return API.put('/api/settings', data);
+        }
+    },
+
+    /**
+     * Dashboard
+     */
+    dashboard: {
+        activity(limit) {
+            return API.get('/api/dashboard/activity', limit != null ? { limit } : {});
+        },
+        feedHealth() {
+            return API.get('/api/dashboard/feed-health');
+        }
+    },
+
+    /**
+     * System (cleanup, export, config)
+     */
+    system: {
+        cleanup(days) {
+            return API.post('/api/system/cleanup', { days: days ?? 90 });
+        },
+        exportEntries(params) {
+            const url = API.buildURL('/api/system/export/entries', params || {});
+            return window.location.assign(url);
+        },
+        exportFeeds() {
+            return window.location.assign('/api/system/export/feeds');
+        },
+        getConfig() {
+            return API.get('/api/system/config');
+        },
+        updateLlmConfig(data) {
+            return API.put('/api/system/config/llm', data);
+        },
+        testLlm(data) {
+            return API.post('/api/system/config/llm/test', data);
+        },
+        updateEmailConfig(data) {
+            return API.put('/api/system/config/email', data);
+        },
+        testEmail(data) {
+            return API.post('/api/system/config/email/test', data);
+        },
+        updateDigestConfig(data) {
+            return API.put('/api/system/config/digest', data);
         }
     }
 };

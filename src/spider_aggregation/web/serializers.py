@@ -34,7 +34,7 @@ def parse_json_tags(tags: Optional[str]) -> list:
     if tags:
         try:
             return json.loads(tags)
-        except (json.JSONDecodeError, TypeError):
+        except json.JSONDecodeError, TypeError:
             return []
     return []
 
@@ -84,11 +84,13 @@ def entry_to_dict(entry) -> dict:
         "author": entry.author,
         "summary": entry.summary,
         "content": entry.content,
+        "full_content": getattr(entry, "full_content", None),
         "published_at": serialize_datetime(entry.published_at),
         "fetched_at": serialize_datetime(entry.fetched_at),
         "tags": parse_json_tags(entry.tags),
         "language": entry.language,
         "reading_time_seconds": entry.reading_time_seconds,
+        "enabled": getattr(entry, "enabled", True),
     }
 
 
@@ -142,7 +144,7 @@ def api_response(
     data: Any = None,
     message: str = None,
     error: str = None,
-    status: int = 200
+    status: int = 200,
 ) -> tuple:
     """Standard API response format.
 
@@ -211,6 +213,7 @@ class SerializerRegistry:
         """
         if model_type in cls._serializers:
             import warnings
+
             warnings.warn(
                 f"Serializer for '{model_type}' is being overwritten. "
                 f"Previous serializer: {cls._serializers[model_type].__name__}",
@@ -257,6 +260,7 @@ class SerializerRegistry:
             return serializer(model, **kwargs)
         except Exception as e:
             from spider_aggregation.logger import get_logger
+
             logger = get_logger(__name__)
             logger.error(f"Serialization error for {model_type}: {e}")
 
@@ -267,9 +271,7 @@ class SerializerRegistry:
             }
 
     @classmethod
-    def serialize_list(
-        cls, model_type: str, models: list[Any], **kwargs
-    ) -> list[dict]:
+    def serialize_list(cls, model_type: str, models: list[Any], **kwargs) -> list[dict]:
         """Serialize a list of models.
 
         Args:

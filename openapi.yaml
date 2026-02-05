@@ -1,0 +1,2212 @@
+openapi: 3.0.3
+info:
+  title: MindWeaver API
+  description: |
+    MindWeaver 个人知识/研究动态监控工具 API
+
+    功能特性：
+    - RSS/Atom 订阅源管理
+    - 条目获取、去重、存储和检索
+    - 分类管理
+    - 过滤规则管理
+    - 自动调度获取
+    - AI 摘要生成
+    - 邮件摘要推送
+
+  version: 1.0.0
+  contact:
+    name: MindWeaver
+
+servers:
+  - url: http://localhost:8000
+    description: 本地开发服务器
+
+paths:
+  # ==================== 页面路由 (HTML) ====================
+  /:
+    get:
+      tags: [Pages]
+      summary: 首页/条目列表
+      description: 返回条目列表页面 (HTML)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: 页码
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+          description: 每页数量
+        - name: feed_id
+          in: query
+          schema:
+            type: integer
+          description: 按订阅源筛选
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: 搜索关键词
+      responses:
+        '200':
+          description: HTML 页面
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /dashboard:
+    get:
+      tags: [Pages]
+      summary: 仪表盘页面
+      description: 返回仪表盘页面 (HTML)
+      responses:
+        '200':
+          description: HTML 页面
+
+  /feeds:
+    get:
+      tags: [Pages]
+      summary: 订阅源管理页面
+      description: 返回订阅源管理页面 (HTML)
+      responses:
+        '200':
+          description: HTML 页面
+
+  /filter-rules:
+    get:
+      tags: [Pages]
+      summary: 过滤规则管理页面
+      description: 返回过滤规则管理页面 (HTML)
+      responses:
+        '200':
+          description: HTML 页面
+
+  /categories:
+    get:
+      tags: [Pages]
+      summary: 分类管理页面
+      description: 返回分类管理页面 (HTML)
+      responses:
+        '200':
+          description: HTML 页面
+
+  /settings:
+    get:
+      tags: [Pages]
+      summary: 设置页面
+      description: 返回系统设置页面 (HTML)
+      responses:
+        '200':
+          description: HTML 页面
+
+  /entry/{entry_id}:
+    get:
+      tags: [Pages]
+      summary: 条目详情页面
+      description: 返回条目详情页面 (HTML)
+      parameters:
+        - name: entry_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: HTML 页面
+        '404':
+          description: 条目不存在
+
+  # ==================== Feeds API ====================
+  /api/feeds:
+    get:
+      tags: [Feeds]
+      summary: 获取所有订阅源
+      description: 列出所有 RSS/Atom 订阅源
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedListResponse'
+
+    post:
+      tags: [Feeds]
+      summary: 创建订阅源
+      description: 添加新的 RSS/Atom 订阅源
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedCreate'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedResponse'
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/feeds/{id}:
+    get:
+      tags: [Feeds]
+      summary: 获取单个订阅源
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedResponse'
+        '404':
+          description: 订阅源不存在
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [Feeds]
+      summary: 更新订阅源
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeedUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedResponse'
+
+    delete:
+      tags: [Feeds]
+      summary: 删除订阅源
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/feeds/{id}/toggle:
+    patch:
+      tags: [Feeds]
+      summary: 切换订阅源启用状态
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 切换成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedResponse'
+
+  /api/feeds/{feed_id}/fetch:
+    post:
+      tags: [Feeds]
+      summary: 手动获取订阅源内容
+      description: 立即触发指定订阅源的获取操作
+      parameters:
+        - name: feed_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      entries_created:
+                        type: integer
+                        description: 新增条目数量
+                      feed:
+                        $ref: '#/components/schemas/Feed'
+                  message:
+                    type: string
+
+  /api/feeds/{feed_id}/categories:
+    get:
+      tags: [Feeds]
+      summary: 获取订阅源的分类
+      parameters:
+        - name: feed_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+    put:
+      tags: [Feeds]
+      summary: 设置订阅源的分类
+      parameters:
+        - name: feed_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: 分类 ID 列表
+      responses:
+        '200':
+          description: 设置成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  message:
+                    type: string
+
+  /api/feeds/{feed_id}/categories/{category_id}:
+    put:
+      tags: [Feeds]
+      summary: 添加分类到订阅源
+      parameters:
+        - name: feed_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 添加成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  message:
+                    type: string
+
+    delete:
+      tags: [Feeds]
+      summary: 从订阅源移除分类
+      parameters:
+        - name: feed_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 移除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+                  message:
+                    type: string
+
+  # ==================== Categories API ====================
+  /api/categories:
+    get:
+      tags: [Categories]
+      summary: 获取所有分类
+      parameters:
+        - name: enabled_only
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: 仅返回启用的分类
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+
+    post:
+      tags: [Categories]
+      summary: 创建分类
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Category'
+                  message:
+                    type: string
+
+  /api/categories/{id}:
+    get:
+      tags: [Categories]
+      summary: 获取单个分类
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Category'
+
+    put:
+      tags: [Categories]
+      summary: 更新分类
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Category'
+                  message:
+                    type: string
+
+    delete:
+      tags: [Categories]
+      summary: 删除分类
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/categories/{id}/toggle:
+    patch:
+      tags: [Categories]
+      summary: 切换分类启用状态
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 切换成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Category'
+                  message:
+                    type: string
+
+  /api/categories/{category_id}/feeds:
+    get:
+      tags: [Categories]
+      summary: 获取分类下的订阅源
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      feeds:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Feed'
+                      total:
+                        type: integer
+
+  /api/categories/stats:
+    get:
+      tags: [Categories]
+      summary: 获取分类统计
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                        description: 总分类数
+                      enabled:
+                        type: integer
+                        description: 启用的分类数
+
+  /api/categories/{category_id}/entries/stats:
+    get:
+      tags: [Categories]
+      summary: 获取分类条目统计
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    description: 包含分类 ID、名称和各类统计信息
+
+  # ==================== Filter Rules API ====================
+  /api/filter-rules:
+    get:
+      tags: [Filter Rules]
+      summary: 获取所有过滤规则
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FilterRule'
+
+    post:
+      tags: [Filter Rules]
+      summary: 创建过滤规则
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilterRuleCreate'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/FilterRule'
+                  message:
+                    type: string
+
+  /api/filter-rules/{id}:
+    get:
+      tags: [Filter Rules]
+      summary: 获取单个过滤规则
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/FilterRule'
+
+    put:
+      tags: [Filter Rules]
+      summary: 更新过滤规则
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FilterRuleUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/FilterRule'
+                  message:
+                    type: string
+
+    delete:
+      tags: [Filter Rules]
+      summary: 删除过滤规则
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/filter-rules/{id}/toggle:
+    patch:
+      tags: [Filter Rules]
+      summary: 切换过滤规则启用状态
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 切换成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/FilterRule'
+                  message:
+                    type: string
+
+  # ==================== Entries API ====================
+  /api/entries:
+    get:
+      tags: [Entries]
+      summary: 获取所有条目
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: feed_id
+          in: query
+          schema:
+            type: integer
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: 搜索关键词
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Entry'
+
+  /api/entries/{id}:
+    get:
+      tags: [Entries]
+      summary: 获取单个条目
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Entry'
+
+    put:
+      tags: [Entries]
+      summary: 更新条目
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryUpdate'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Entry'
+                  message:
+                    type: string
+
+    delete:
+      tags: [Entries]
+      summary: 删除条目
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/entries/{id}/toggle:
+    patch:
+      tags: [Entries]
+      summary: 切换条目启用状态
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 切换成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Entry'
+                  message:
+                    type: string
+
+  /api/entries/batch/delete:
+    post:
+      tags: [Entries]
+      summary: 批量删除条目
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - entry_ids
+              properties:
+                entry_ids:
+                  type: array
+                  items:
+                    type: integer
+                  description: 要删除的条目 ID 列表
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      deleted_count:
+                        type: integer
+                  message:
+                    type: string
+
+  /api/entries/batch/fetch-content:
+    post:
+      tags: [Entries]
+      summary: 批量获取完整内容
+      description: 为指定条目获取完整文章内容
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - entry_ids
+              properties:
+                entry_ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: 操作完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: integer
+                        description: 成功数量
+                      failed:
+                        type: integer
+                        description: 失败数量
+                  message:
+                    type: string
+
+  /api/entries/batch/extract-keywords:
+    post:
+      tags: [Entries]
+      summary: 批量提取关键词
+      description: 为指定条目自动提取关键词
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - entry_ids
+              properties:
+                entry_ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: 操作完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: integer
+                      failed:
+                        type: integer
+                  message:
+                    type: string
+
+  /api/entries/batch/summarize:
+    post:
+      tags: [Entries]
+      summary: 批量生成摘要
+      description: 使用 AI 为指定条目生成摘要
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - entry_ids
+              properties:
+                entry_ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: 操作完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: integer
+                      failed:
+                        type: integer
+                  message:
+                    type: string
+
+  /api/entries/by-category/{category_id}:
+    get:
+      tags: [Entries]
+      summary: 按分类获取条目
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      entries:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Entry'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+
+  /api/entries/by-category-name/{category_name}:
+    get:
+      tags: [Entries]
+      summary: 按分类名称获取条目
+      parameters:
+        - name: category_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      entries:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Entry'
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+
+  /api/entries/search-by-category/{category_id}:
+    get:
+      tags: [Entries]
+      summary: 在分类中搜索条目
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 搜索关键词
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      entries:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Entry'
+                      query:
+                        type: string
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+
+  /api/entries/by-category/{category_id}/stats:
+    get:
+      tags: [Entries]
+      summary: 获取分类条目统计
+      parameters:
+        - name: category_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      category_id:
+                        type: integer
+                      category_name:
+                        type: string
+                      total_entries:
+                        type: integer
+                      recent_entries:
+                        type: integer
+                      top_sources:
+                        type: array
+                        items:
+                          type: object
+
+  # ==================== Scheduler API ====================
+  /api/scheduler/status:
+    get:
+      tags: [Scheduler]
+      summary: 获取调度器状态
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      is_running:
+                        type: boolean
+                        description: 调度器是否运行中
+                      total_feeds_count:
+                        type: integer
+                      enabled_feeds_count:
+                        type: integer
+                      jobs:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                            name:
+                              type: string
+                            next_run_time:
+                              type: string
+                              format: date-time
+
+  /api/scheduler/start:
+    post:
+      tags: [Scheduler]
+      summary: 启动调度器
+      responses:
+        '200':
+          description: 启动成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /api/scheduler/stop:
+    post:
+      tags: [Scheduler]
+      summary: 停止调度器
+      responses:
+        '200':
+          description: 停止成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /api/scheduler/fetch-all:
+    post:
+      tags: [Scheduler]
+      summary: 手动触发所有订阅源获取
+      description: 立即获取所有启用的订阅源
+      responses:
+        '200':
+          description: 操作完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      feeds_fetched:
+                        type: integer
+                        description: 获取的订阅源数量
+                      total_entries_created:
+                        type: integer
+                        description: 新增条目总数
+                      results:
+                        type: array
+                        items:
+                          type: object
+                  message:
+                    type: string
+
+  /api/scheduler/digest/trigger:
+    post:
+      tags: [Scheduler]
+      summary: 手动触发摘要生成
+      description: 立即生成并发送摘要邮件
+      responses:
+        '200':
+          description: 操作完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      entry_count:
+                        type: integer
+                      feed_count:
+                        type: integer
+                      subject:
+                        type: string
+                  message:
+                    type: string
+
+  /api/scheduler/digest/logs:
+    get:
+      tags: [Scheduler]
+      summary: 获取摘要发送日志
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      logs:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DigestLog'
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+
+  # ==================== System API ====================
+  /api/stats:
+    get:
+      tags: [System]
+      summary: 获取系统统计
+      description: 获取整体统计数据
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_entries:
+                    type: integer
+                  total_feeds:
+                    type: integer
+                  enabled_feeds:
+                    type: integer
+                  total_rules:
+                    type: integer
+                  total_categories:
+                    type: integer
+                  language_counts:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  most_recent:
+                    type: string
+                    format: date-time
+
+  /api/dashboard/activity:
+    get:
+      tags: [System]
+      summary: 获取最近活动
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: 返回条数
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Entry'
+
+  /api/dashboard/feed-health:
+    get:
+      tags: [System]
+      summary: 获取订阅源健康状态
+      description: 获取所有订阅源的健康状态信息
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        url:
+                          type: string
+                        enabled:
+                          type: boolean
+                        error_count:
+                          type: integer
+                        last_fetched:
+                          type: string
+                          format: date-time
+                        has_error:
+                          type: boolean
+
+  /api/system/cleanup:
+    post:
+      tags: [System]
+      summary: 清理旧条目
+      description: 删除指定天数之前的条目
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                days:
+                  type: integer
+                  default: 90
+                  description: 保留最近多少天的条目
+      responses:
+        '200':
+          description: 清理完成
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      deleted_count:
+                        type: integer
+                  message:
+                    type: string
+
+  /api/system/export/entries:
+    get:
+      tags: [System]
+      summary: 导出条目
+      description: 导出条目为 JSON 文件
+      parameters:
+        - name: feed_id
+          in: query
+          schema:
+            type: integer
+          description: 按订阅源筛选
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 1000
+          description: 导出数量限制
+      responses:
+        '200':
+          description: JSON 文件下载
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Entry'
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: attachment; filename=entries.json
+
+  /api/system/export/feeds:
+    get:
+      tags: [System]
+      summary: 导出订阅源
+      description: 导出所有订阅源为 JSON 文件
+      responses:
+        '200':
+          description: JSON 文件下载
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feed'
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: attachment; filename=feeds.json
+
+  /api/system/config:
+    get:
+      tags: [System]
+      summary: 获取系统配置
+      description: 获取 LLM、邮件、摘要等配置
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      llm:
+                        $ref: '#/components/schemas/LLMConfig'
+                      email:
+                        $ref: '#/components/schemas/EmailConfig'
+                      digest:
+                        $ref: '#/components/schemas/DigestConfig'
+
+  /api/system/config/llm:
+    put:
+      tags: [System]
+      summary: 更新 LLM 配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LLMConfig'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/system/config/llm/test:
+    post:
+      tags: [System]
+      summary: 测试 LLM 连接
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - api_key
+              properties:
+                provider:
+                  type: string
+                  enum: [openai, anthropic, deepseek]
+                  description: LLM 提供商
+                api_key:
+                  type: string
+                  description: API 密钥
+                api_base:
+                  type: string
+                  description: API 基础 URL（可选）
+                model:
+                  type: string
+                  description: 模型名称（可选）
+      responses:
+        '200':
+          description: 连接成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: 连接失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/system/config/email:
+    put:
+      tags: [System]
+      summary: 更新邮件配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailConfig'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /api/system/config/email/test:
+    post:
+      tags: [System]
+      summary: 测试邮件连接
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - smtp_host
+                - smtp_port
+                - username
+                - password
+              properties:
+                smtp_host:
+                  type: string
+                smtp_port:
+                  type: integer
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: 连接成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: 连接失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/system/config/digest:
+    put:
+      tags: [System]
+      summary: 更新摘要配置
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DigestConfig'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+components:
+  schemas:
+    # ==================== 基础响应模型 ====================
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: 操作成功
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: 错误信息
+        status:
+          type: integer
+          example: 400
+
+    FeedListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Feed'
+
+    FeedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/Feed'
+        message:
+          type: string
+
+    # ==================== Feed 模型 ====================
+    Feed:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 订阅源 ID
+        url:
+          type: string
+          format: uri
+          description: RSS/Atom 订阅源 URL
+        name:
+          type: string
+          description: 订阅源名称
+        description:
+          type: string
+          description: 订阅源描述
+        enabled:
+          type: boolean
+          description: 是否启用
+          default: true
+        fetch_interval_minutes:
+          type: integer
+          description: 获取间隔（分钟）
+          default: 60
+        max_entries_per_fetch:
+          type: integer
+          description: 每次获取最大条目数
+          default: 50
+        fetch_only_recent:
+          type: boolean
+          description: 仅获取最近条目
+          default: false
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+        last_fetched_at:
+          type: string
+          format: date-time
+          description: 上次获取时间
+        fetch_error_count:
+          type: integer
+          description: 连续错误次数
+          default: 0
+        last_error:
+          type: string
+          description: 上次错误信息
+        last_error_at:
+          type: string
+          format: date-time
+          description: 上次错误时间
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+          description: 关联的分类列表
+
+    FeedCreate:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+          description: RSS/Atom 订阅源 URL
+        name:
+          type: string
+          description: 订阅源名称
+        description:
+          type: string
+          description: 订阅源描述
+        enabled:
+          type: boolean
+          default: true
+        fetch_interval_minutes:
+          type: integer
+          default: 60
+        max_entries_per_fetch:
+          type: integer
+          default: 50
+        fetch_only_recent:
+          type: boolean
+          default: false
+
+    FeedUpdate:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        name:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        fetch_interval_minutes:
+          type: integer
+        max_entries_per_fetch:
+          type: integer
+        fetch_only_recent:
+          type: boolean
+
+    # ==================== Category 模型 ====================
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: 分类名称
+        description:
+          type: string
+          description: 分类描述
+        color:
+          type: string
+          description: 分类颜色（Hex 格式，如 #FF5733）
+        icon:
+          type: string
+          description: 分类图标
+        enabled:
+          type: boolean
+          default: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        feed_count:
+          type: integer
+          description: 关联的订阅源数量
+
+    CategoryCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 200
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+          example: '#FF5733'
+        icon:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+
+    CategoryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 200
+        color:
+          type: string
+          pattern: '^#[0-9A-Fa-f]{6}$'
+        icon:
+          type: string
+        enabled:
+          type: boolean
+
+    # ==================== Filter Rule 模型 ====================
+    FilterRule:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          description: 规则名称
+        enabled:
+          type: boolean
+          default: true
+        rule_type:
+          type: string
+          enum: [keyword, regex, tag, language]
+          description: 规则类型
+        match_type:
+          type: string
+          enum: [include, exclude]
+          description: 匹配类型
+        pattern:
+          type: string
+          description: 匹配模式
+        priority:
+          type: integer
+          description: 优先级（数字越小优先级越高）
+          default: 10
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FilterRuleCreate:
+      type: object
+      required:
+        - name
+        - rule_type
+        - match_type
+        - pattern
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        rule_type:
+          type: string
+          enum: [keyword, regex, tag, language]
+        match_type:
+          type: string
+          enum: [include, exclude]
+        pattern:
+          type: string
+          minLength: 1
+        priority:
+          type: integer
+          default: 10
+        enabled:
+          type: boolean
+          default: true
+
+    FilterRuleUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        rule_type:
+          type: string
+          enum: [keyword, regex, tag, language]
+        match_type:
+          type: string
+          enum: [include, exclude]
+        pattern:
+          type: string
+          minLength: 1
+        priority:
+          type: integer
+        enabled:
+          type: boolean
+
+    # ==================== Entry 模型 ====================
+    Entry:
+      type: object
+      properties:
+        id:
+          type: integer
+        feed_id:
+          type: integer
+          description: 所属订阅源 ID
+        title:
+          type: string
+          description: 条目标题
+        link:
+          type: string
+          format: uri
+          description: 原始链接
+        author:
+          type: string
+          description: 作者
+        summary:
+          type: string
+          description: AI 生成的摘要
+        content:
+          type: string
+          description: 完整内容
+        published_at:
+          type: string
+          format: date-time
+          description: 发布时间
+        fetched_at:
+          type: string
+          format: date-time
+          description: 获取时间
+        tags:
+          type: array
+          items:
+            type: string
+          description: 标签列表
+        language:
+          type: string
+          description: 语言代码
+        reading_time_seconds:
+          type: integer
+          description: 预计阅读时间（秒）
+        title_hash:
+          type: string
+          description: 标题哈希（用于去重）
+        link_hash:
+          type: string
+          description: 链接哈希（用于去重）
+        content_hash:
+          type: string
+          description: 内容哈希（用于去重）
+        enabled:
+          type: boolean
+          description: 是否启用（未读=true，已读=false）
+          default: true
+
+    EntryUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        summary:
+          type: string
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        enabled:
+          type: boolean
+          description: 启用/禁用（对应未读/已读）
+
+    # ==================== Digest Log 模型 ====================
+    DigestLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        triggered_at:
+          type: string
+          format: date-time
+          description: 触发时间
+        status:
+          type: string
+          enum: [pending, running, success, failed]
+          description: 执行状态
+        entry_count:
+          type: integer
+          description: 处理的条目数
+        feed_count:
+          type: integer
+          description: 涉及的订阅源数
+        subject:
+          type: string
+          description: 邮件主题
+        recipients:
+          type: array
+          items:
+            type: string
+          description: 收件人列表
+        error_message:
+          type: string
+          description: 错误信息（如果失败）
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    # ==================== Config 模型 ====================
+    LLMConfig:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [openai, anthropic, deepseek]
+        api_key:
+          type: string
+        api_base:
+          type: string
+        model:
+          type: string
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        max_tokens:
+          type: integer
+
+    EmailConfig:
+      type: object
+      properties:
+        smtp_host:
+          type: string
+        smtp_port:
+          type: integer
+        username:
+          type: string
+        password:
+          type: string
+        use_tls:
+          type: boolean
+          default: true
+        from_addr:
+          type: string
+          format: email
+        to_addrs:
+          type: array
+          items:
+            type: string
+            format: email
+
+    DigestConfig:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        schedule:
+          type: string
+          description: Cron 表达式
+        max_entries:
+          type: integer
+          description: 每封邮件最大条目数
+          default: 20
+        include_summary:
+          type: boolean
+          description: 是否包含 AI 摘要
+          default: true

@@ -1,578 +1,433 @@
-// MindWeaver - Form Handling JavaScript
+/**
+ * MindWeaver Form Handler
+ * Provides utilities for form handling and modals
+ */
 
-// ============================================================================
-// Feed Form Handling
-// ============================================================================
+const Forms = {
+    /**
+     * Show a modal with form content
+     */
+    showModal(content, options = {}) {
+        const {
+            title = '',
+            size = 'md',
+            footer = null,
+            onClose = null
+        } = options;
 
-function showAddFeedModal() {
-    const content = `
-        <form id="feed-form" onsubmit="handleFeedSubmit(event)">
-            <div class="form-group">
-                <label for="feed-url">订阅源链接 *</label>
-                <input type="url" id="feed-url" name="url" class="form-control" required placeholder="https://example.com/feed">
-                <div class="form-help">输入 RSS/Atom 订阅源链接</div>
+        const modalHTML = `
+            <div class="modal-overlay" id="active-modal">
+                <div class="modal modal-${size}">
+                    ${title ? `
+                    <div class="modal-header">
+                        <h2 class="modal-title">${title}</h2>
+                        <button class="modal-close" data-close-modal>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    ` : ''}
+                    <div class="modal-body">
+                        ${content}
+                    </div>
+                    ${footer ? `
+                    <div class="modal-footer">
+                        ${footer}
+                    </div>
+                    ` : ''}
+                </div>
             </div>
+        `;
 
-            <div class="form-group">
-                <label for="feed-name">名称</label>
-                <input type="text" id="feed-name" name="name" class="form-control" placeholder="我的博客订阅">
-                <div class="form-help">可选的自定义名称（留空则自动从订阅源获取）</div>
-            </div>
+        const container = document.getElementById('modal-container');
+        container.innerHTML = modalHTML;
 
-            <div class="form-group">
-                <label for="feed-description">描述</label>
-                <textarea id="feed-description" name="description" class="form-control" rows="2"></textarea>
-            </div>
+        const modal = container.querySelector('#active-modal');
 
-            <div class="form-group">
-                <label for="feed-interval">抓取间隔（分钟）</label>
-                <input type="number" id="feed-interval" name="fetch_interval_minutes" class="form-control" value="60" min="10" max="10080">
-                <div class="form-help">抓取订阅源的频率（10-10080 分钟）</div>
-            </div>
+        // Add close handlers
+        const closeHandler = () => {
+            modal.remove();
+            if (onClose) onClose();
+        };
 
-            <div class="form-group">
-                <label for="max-entries">每次抓取最大文章数</label>
-                <input type="number" id="max-entries" name="max_entries_per_fetch" class="form-control" value="100" min="0" max="1000">
-                <div class="form-help">每次更新最多抓取的文章数量（0-1000，0表示不限制）</div>
-            </div>
+        modal.querySelector('[data-close-modal]')?.addEventListener('click', closeHandler);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeHandler();
+        });
 
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="fetch_only_recent">
-                    仅抓取最近 30 天的文章
-                </label>
-                <div class="form-help">启用后只保存最近 30 天内发布的文章</div>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="enabled" checked>
-                    启用此订阅源
-                </label>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="App.modal.hide()">取消</button>
-                <button type="submit" class="btn btn-primary">创建订阅源</button>
-            </div>
-        </form>
-    `;
-
-    App.modal.show('添加订阅源', content);
-}
-
-function showEditFeedModal(feedId) {
-    const feedData = window.feedData.find(f => f.id === feedId);
-    if (!feedData) {
-        App.showToast('未找到订阅源', 'error');
-        return;
-    }
-
-    const content = `
-        <form id="feed-form" onsubmit="handleFeedUpdate(event, ${feedId})">
-            <div class="form-group">
-                <label for="feed-url">订阅源链接 *</label>
-                <input type="url" id="feed-url" name="url" class="form-control" required value="${App.escapeHtml(feedData.url)}" readonly>
-                <div class="form-help">订阅源链接不可更改</div>
-            </div>
-
-            <div class="form-group">
-                <label for="feed-name">名称</label>
-                <input type="text" id="feed-name" name="name" class="form-control" value="${App.escapeHtml(feedData.name || '')}">
-            </div>
-
-            <div class="form-group">
-                <label for="feed-description">描述</label>
-                <textarea id="feed-description" name="description" class="form-control" rows="2">${App.escapeHtml(feedData.description || '')}</textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="feed-interval">抓取间隔（分钟）</label>
-                <input type="number" id="feed-interval" name="fetch_interval_minutes" class="form-control" value="${feedData.fetch_interval_minutes}" min="10" max="10080">
-            </div>
-
-            <div class="form-group">
-                <label for="max-entries">每次抓取最大文章数</label>
-                <input type="number" id="max-entries" name="max_entries_per_fetch" class="form-control"
-                       value="${feedData.max_entries_per_fetch || 100}" min="0" max="1000">
-                <div class="form-help">每次更新最多抓取的文章数量（0-1000，0表示不限制）</div>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="fetch_only_recent" ${feedData.fetch_only_recent ? 'checked' : ''}>
-                    仅抓取最近 30 天的文章
-                </label>
-                <div class="form-help">启用后只保存最近 30 天内发布的文章</div>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="enabled" ${feedData.enabled ? 'checked' : ''}>
-                    启用此订阅源
-                </label>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="App.modal.hide()">取消</button>
-                <button type="submit" class="btn btn-primary">更新订阅源</button>
-            </div>
-        </form>
-    `;
-
-    App.modal.show('编辑订阅源', content);
-}
-
-async function handleFeedSubmit(event) {
-    event.preventDefault();
-    const form = event.target;
-    const validation = App.form.validate(form);
-
-    if (!validation.valid) {
-        App.showToast('请修正表单中的错误', 'error');
-        return;
-    }
-
-    const data = App.form.serialize(form);
-
-    try {
-        const response = await App.api.post('/api/feeds', data);
-
-        if (response.success) {
-            App.showToast('订阅源创建成功', 'success');
-            App.modal.hide();
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '创建订阅源失败', 'error');
-        }
-    } catch (error) {
-        console.error('创建订阅源错误:', error);
-        App.showToast('创建订阅源失败', 'error');
-    }
-}
-
-async function handleFeedUpdate(event, feedId) {
-    event.preventDefault();
-    const form = event.target;
-    const validation = App.form.validate(form);
-
-    if (!validation.valid) {
-        App.showToast('请修正表单中的错误', 'error');
-        return;
-    }
-
-    const data = App.form.serialize(form);
-
-    try {
-        const response = await App.api.put(`/api/feeds/${feedId}`, data);
-
-        if (response.success) {
-            App.showToast('订阅源更新成功', 'success');
-            App.modal.hide();
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '更新订阅源失败', 'error');
-        }
-    } catch (error) {
-        console.error('更新订阅源错误:', error);
-        App.showToast('更新订阅源失败', 'error');
-    }
-}
-
-async function toggleFeed(feedId) {
-    try {
-        const response = await App.api.post(`/api/feeds/${feedId}/toggle`);
-
-        if (response.success) {
-            App.showToast(response.message, 'success');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '切换状态失败', 'error');
-        }
-    } catch (error) {
-        console.error('切换状态错误:', error);
-        App.showToast('切换状态失败', 'error');
-    }
-}
-
-async function deleteFeed(feedId) {
-    const feedData = window.feedData.find(f => f.id === feedId);
-    const feedName = feedData ? (feedData.name || feedData.url) : '未知';
-
-    App.modal.confirm(
-        `确定要删除订阅源 "${App.escapeHtml(feedName)}" 吗？`,
-        async () => {
-            try {
-                const response = await App.api.delete(`/api/feeds/${feedId}`);
-
-                if (response.success) {
-                    App.showToast('订阅源删除成功', 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    App.showToast(response.error || '删除订阅源失败', 'error');
-                }
-            } catch (error) {
-                console.error('删除订阅源错误:', error);
-                App.showToast('删除订阅源失败', 'error');
+        // Handle Escape key
+        const escapeHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeHandler();
+                document.removeEventListener('keydown', escapeHandler);
             }
-        },
-        { title: '删除订阅源', danger: true }
-    );
-}
+        };
+        document.addEventListener('keydown', escapeHandler);
 
-async function fetchFeed(feedId) {
-    try {
-        const response = await App.api.post(`/api/feeds/${feedId}/fetch`);
+        return modal;
+    },
 
-        if (response.success) {
-            App.showToast(response.message, 'success');
-        } else {
-            App.showToast(response.error || '抓取失败', 'error');
+    /**
+     * Close active modal
+     */
+    closeModal() {
+        const modal = document.querySelector('#active-modal');
+        if (modal) {
+            modal.remove();
         }
-    } catch (error) {
-        console.error('抓取错误:', error);
-        App.showToast('抓取失败', 'error');
-    }
-}
+    },
 
-// ============================================================================
-// Filter Rule Form Handling
-// ============================================================================
+    /**
+     * Show a confirm dialog
+     */
+    confirm(message, options = {}) {
+        const {
+            title = '确认',
+            confirmText = '确认',
+            cancelText = '取消',
+            onConfirm = null,
+            onCancel = null
+        } = options;
 
-function showAddFilterRuleModal() {
-    const content = `
-        <form id="filter-rule-form" onsubmit="handleFilterRuleSubmit(event)">
-            <div class="form-group">
-                <label for="rule-name">规则名称 *</label>
-                <input type="text" id="rule-name" name="name" class="form-control" required placeholder="我的过滤规则">
-            </div>
+        const content = `
+            <p>${message}</p>
+        `;
 
-            <div class="form-group">
-                <label for="rule-type">规则类型 *</label>
-                <select id="rule-type" name="rule_type" class="form-control" required>
-                    <option value="keyword">关键词</option>
-                    <option value="regex">正则表达式</option>
-                    <option value="tag">标签</option>
-                    <option value="language">语言</option>
-                </select>
-            </div>
+        const footer = `
+            <button class="btn btn-secondary" data-cancel>${cancelText}</button>
+            <button class="btn btn-danger" data-confirm>${confirmText}</button>
+        `;
 
-            <div class="form-group">
-                <label for="match-type">匹配方式 *</label>
-                <select id="match-type" name="match_type" class="form-control" required>
-                    <option value="include">通过（匹配的文章会通过）</option>
-                    <option value="exclude">过滤（匹配的文章会被过滤）</option>
-                </select>
-            </div>
+        const modal = this.showModal(content, { title, footer });
 
-            <div class="form-group">
-                <label for="rule-pattern">模式 *</label>
-                <input type="text" id="rule-pattern" name="pattern" class="form-control" required placeholder="关键词或正则表达式">
-                <div class="form-help">关键词：精确匹配；正则：有效的正则表达式</div>
-            </div>
+        modal.querySelector('[data-confirm]')?.addEventListener('click', () => {
+            modal.remove();
+            if (onConfirm) onConfirm();
+        });
 
-            <div class="form-group">
-                <label for="rule-priority">优先级</label>
-                <input type="number" id="rule-priority" name="priority" class="form-control" value="0" min="0" max="100">
-                <div class="form-help">优先级高的规则会先执行（0-100）</div>
-            </div>
+        modal.querySelector('[data-cancel]')?.addEventListener('click', () => {
+            modal.remove();
+            if (onCancel) onCancel();
+        });
+    },
 
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="enabled" checked>
-                    启用此规则
-                </label>
-            </div>
+    /**
+     * Show an alert dialog
+     */
+    alert(message, options = {}) {
+        const {
+            title = '提示',
+            type = 'info'
+        } = options;
 
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="App.modal.hide()">取消</button>
-                <button type="submit" class="btn btn-primary">创建规则</button>
-            </div>
-        </form>
-    `;
+        const content = `
+            <p>${message}</p>
+        `;
 
-    App.modal.show('添加过滤规则', content);
-}
+        const footer = `
+            <button class="btn btn-primary" data-close>确定</button>
+        `;
 
-function showEditFilterRuleModal(ruleId) {
-    const ruleData = window.ruleData.find(r => r.id === ruleId);
-    if (!ruleData) {
-        App.showToast('未找到过滤规则', 'error');
-        return;
-    }
+        const modal = this.showModal(content, { title, footer });
 
-    const content = `
-        <form id="filter-rule-form" onsubmit="handleFilterRuleUpdate(event, ${ruleId})">
-            <div class="form-group">
-                <label for="rule-name">规则名称 *</label>
-                <input type="text" id="rule-name" name="name" class="form-control" required value="${App.escapeHtml(ruleData.name)}">
-            </div>
+        modal.querySelector('[data-close]')?.addEventListener('click', () => {
+            modal.remove();
+        });
+    },
 
-            <div class="form-group">
-                <label for="rule-type">规则类型 *</label>
-                <select id="rule-type" name="rule_type" class="form-control" required>
-                    <option value="keyword" ${ruleData.rule_type === 'keyword' ? 'selected' : ''}>关键词</option>
-                    <option value="regex" ${ruleData.rule_type === 'regex' ? 'selected' : ''}>正则表达式</option>
-                    <option value="tag" ${ruleData.rule_type === 'tag' ? 'selected' : ''}>标签</option>
-                    <option value="language" ${ruleData.rule_type === 'language' ? 'selected' : ''}>语言</option>
-                </select>
-            </div>
+    /**
+     * Validate form
+     */
+    validate(form) {
+        const errors = [];
+        const data = {};
 
-            <div class="form-group">
-                <label for="match-type">匹配方式 *</label>
-                <select id="match-type" name="match_type" class="form-control" required>
-                    <option value="include" ${ruleData.match_type === 'include' ? 'selected' : ''}>通过（匹配的文章会通过）</option>
-                    <option value="exclude" ${ruleData.match_type === 'exclude' ? 'selected' : ''}>过滤（匹配的文章会被过滤）</option>
-                </select>
-            </div>
+        // Get all form inputs
+        const inputs = form.querySelectorAll('input, select, textarea');
 
-            <div class="form-group">
-                <label for="rule-pattern">模式 *</label>
-                <input type="text" id="rule-pattern" name="pattern" class="form-control" required value="${App.escapeHtml(ruleData.pattern)}">
-            </div>
+        inputs.forEach(input => {
+            const name = input.name;
+            const value = input.value.trim();
+            const required = input.hasAttribute('required');
+            const type = input.type;
 
-            <div class="form-group">
-                <label for="rule-priority">优先级</label>
-                <input type="number" id="rule-priority" name="priority" class="form-control" value="${ruleData.priority}" min="0" max="100">
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="enabled" ${ruleData.enabled ? 'checked' : ''}>
-                    启用此规则
-                </label>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="App.modal.hide()">取消</button>
-                <button type="submit" class="btn btn-primary">更新规则</button>
-            </div>
-        </form>
-    `;
-
-    App.modal.show('编辑过滤规则', content);
-}
-
-async function handleFilterRuleSubmit(event) {
-    event.preventDefault();
-    const form = event.target;
-    const validation = App.form.validate(form);
-
-    if (!validation.valid) {
-        App.showToast('请修正表单中的错误', 'error');
-        return;
-    }
-
-    const data = App.form.serialize(form);
-
-    try {
-        const response = await App.api.post('/api/filter-rules', data);
-
-        if (response.success) {
-            App.showToast('过滤规则创建成功', 'success');
-            App.modal.hide();
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '创建过滤规则失败', 'error');
-        }
-    } catch (error) {
-        console.error('创建过滤规则错误:', error);
-        App.showToast('创建过滤规则失败', 'error');
-    }
-}
-
-async function handleFilterRuleUpdate(event, ruleId) {
-    event.preventDefault();
-    const form = event.target;
-    const validation = App.form.validate(form);
-
-    if (!validation.valid) {
-        App.showToast('请修正表单中的错误', 'error');
-        return;
-    }
-
-    const data = App.form.serialize(form);
-
-    try {
-        const response = await App.api.put(`/api/filter-rules/${ruleId}`, data);
-
-        if (response.success) {
-            App.showToast('过滤规则更新成功', 'success');
-            App.modal.hide();
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '更新过滤规则失败', 'error');
-        }
-    } catch (error) {
-        console.error('更新过滤规则错误:', error);
-        App.showToast('更新过滤规则失败', 'error');
-    }
-}
-
-async function toggleFilterRule(ruleId) {
-    try {
-        const response = await App.api.post(`/api/filter-rules/${ruleId}/toggle`);
-
-        if (response.success) {
-            App.showToast(response.message, 'success');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '切换状态失败', 'error');
-        }
-    } catch (error) {
-        console.error('切换状态错误:', error);
-        App.showToast('切换状态失败', 'error');
-    }
-}
-
-async function deleteFilterRule(ruleId) {
-    const ruleData = window.ruleData.find(r => r.id === ruleId);
-    const ruleName = ruleData ? ruleData.name : '未知';
-
-    App.modal.confirm(
-        `确定要删除过滤规则 "${App.escapeHtml(ruleName)}" 吗？`,
-        async () => {
-            try {
-                const response = await App.api.delete(`/api/filter-rules/${ruleId}`);
-
-                if (response.success) {
-                    App.showToast('过滤规则删除成功', 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    App.showToast(response.error || '删除过滤规则失败', 'error');
-                }
-            } catch (error) {
-                console.error('删除过滤规则错误:', error);
-                App.showToast('删除过滤规则失败', 'error');
+            // Skip unchecked checkboxes
+            if (type === 'checkbox' && !input.checked) {
+                return;
             }
-        },
-        { title: '删除过滤规则', danger: true }
-    );
-}
 
-// ============================================================================
-// Entry Batch Operations
-// ============================================================================
-
-function getSelectedEntryIds() {
-    const checkboxes = document.querySelectorAll('.entry-checkbox:checked');
-    return Array.from(checkboxes).map(cb => parseInt(cb.value));
-}
-
-async function batchDeleteEntries() {
-    const entryIds = getSelectedEntryIds();
-
-    if (entryIds.length === 0) {
-        App.showToast('请至少选择一篇文章', 'error');
-        return;
-    }
-
-    App.modal.confirm(
-        `确定要删除选中的 ${entryIds.length} 篇文章吗？`,
-        async () => {
-            try {
-                const response = await App.api.post('/api/entries/batch/delete', { entry_ids: entryIds });
-
-                if (response.success) {
-                    App.showToast(response.message || '文章删除成功', 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    App.showToast(response.error || '删除文章失败', 'error');
-                }
-            } catch (error) {
-                console.error('删除文章错误:', error);
-                App.showToast('删除文章失败', 'error');
+            // Required validation
+            if (required && !value) {
+                errors.push(`${input.previousElementSibling?.textContent || name} 是必填项`);
+                return;
             }
-        },
-        { title: '删除文章', danger: true }
-    );
-}
 
-async function batchFetchContent() {
-    const entryIds = getSelectedEntryIds();
-
-    if (entryIds.length === 0) {
-        App.showToast('请至少选择一篇文章', 'error');
-        return;
-    }
-
-    App.showToast('正在提取内容...这可能需要一些时间', 'info');
-
-    try {
-        const response = await App.api.post('/api/entries/batch/fetch-content', { entry_ids: entryIds });
-
-        if (response.success) {
-            const { success, failed } = response.data;
-            App.showToast(`内容提取完成：${success} 篇成功，${failed} 篇失败`, success > 0 ? 'success' : 'error');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '提取内容失败', 'error');
-        }
-    } catch (error) {
-        console.error('提取内容错误:', error);
-        App.showToast('提取内容失败', 'error');
-    }
-}
-
-async function batchExtractKeywords() {
-    const entryIds = getSelectedEntryIds();
-
-    if (entryIds.length === 0) {
-        App.showToast('请至少选择一篇文章', 'error');
-        return;
-    }
-
-    App.showToast('正在提取关键词...这可能需要一些时间', 'info');
-
-    try {
-        const response = await App.api.post('/api/entries/batch/extract-keywords', { entry_ids: entryIds });
-
-        if (response.success) {
-            const { success, failed } = response.data;
-            App.showToast(`关键词提取完成：${success} 篇成功，${failed} 篇失败`, success > 0 ? 'success' : 'error');
-            setTimeout(() => location.reload(), 500);
-        } else {
-            App.showToast(response.error || '提取关键词失败', 'error');
-        }
-    } catch (error) {
-        console.error('提取关键词错误:', error);
-        App.showToast('提取关键词失败', 'error');
-    }
-}
-
-async function batchSummarize() {
-    const entryIds = getSelectedEntryIds();
-
-    if (entryIds.length === 0) {
-        App.showToast('请至少选择一篇文章', 'error');
-        return;
-    }
-
-    App.modal.confirm(
-        '为选中的文章生成摘要？AI 摘要可能需要一些时间。',
-        async () => {
-            App.showToast('正在生成摘要...这可能需要一些时间', 'info');
-
-            try {
-                const response = await App.api.post('/api/entries/batch/summarize', { entry_ids: entryIds, method: 'extractive' });
-
-                if (response.success) {
-                    const { success, failed } = response.data;
-                    App.showToast(`摘要生成完成：${success} 篇成功，${failed} 篇失败`, success > 0 ? 'success' : 'error');
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    App.showToast(response.error || '生成摘要失败', 'error');
+            // Email validation
+            if (type === 'email' && value) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) {
+                    errors.push('请输入有效的邮箱地址');
+                    return;
                 }
-            } catch (error) {
-                console.error('生成摘要错误:', error);
-                App.showToast('生成摘要失败', 'error');
             }
-        },
-        { title: '生成摘要' }
-    );
-}
 
-function toggleSelectAll(checkbox) {
-    const checkboxes = document.querySelectorAll('.entry-checkbox');
-    checkboxes.forEach(cb => cb.checked = checkbox.checked);
-}
+            // URL validation
+            if (type === 'url' && value) {
+                try {
+                    new URL(value);
+                } catch {
+                    errors.push('请输入有效的URL');
+                    return;
+                }
+            }
+
+            // Store value
+            if (type === 'checkbox') {
+                data[name] = input.checked;
+            } else if (type === 'number') {
+                data[name] = value ? parseFloat(value) : null;
+            } else {
+                data[name] = value;
+            }
+        });
+
+        return {
+            valid: errors.length === 0,
+            errors,
+            data
+        };
+    },
+
+    /**
+     * Collect form data
+     */
+    getFormData(form) {
+        const data = {};
+        const formData = new FormData(form);
+
+        for (const [key, value] of formData.entries()) {
+            // Check if key already exists (for checkboxes)
+            if (data[key] !== undefined) {
+                if (!Array.isArray(data[key])) {
+                    data[key] = [data[key]];
+                }
+                data[key].push(value);
+            } else {
+                data[key] = value;
+            }
+        }
+
+        // Handle checkboxes
+        form.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            if (!checkbox.name) return;
+            if (!formData.has(checkbox.name)) {
+                data[checkbox.name] = false;
+            }
+        });
+
+        return data;
+    },
+
+    /**
+     * Populate form with data
+     */
+    populateForm(form, data) {
+        Object.entries(data).forEach(([key, value]) => {
+            const input = form.querySelector(`[name="${key}"]`);
+            if (!input) return;
+
+            const type = input.type;
+
+            if (type === 'checkbox') {
+                input.checked = Boolean(value);
+            } else if (type === 'radio') {
+                if (input.value === String(value)) {
+                    input.checked = true;
+                }
+            } else {
+                input.value = value || '';
+            }
+        });
+    },
+
+    /**
+     * Reset form
+     */
+    resetForm(form) {
+        form.reset();
+        // Clear custom error styles
+        form.querySelectorAll('.error')?.forEach(el => {
+            el.classList.remove('error');
+        });
+        form.querySelectorAll('.error-message')?.forEach(el => {
+            el.remove();
+        });
+    },
+
+    /**
+     * Show field error
+     */
+    showFieldError(input, message) {
+        input.classList.add('error');
+
+        let errorEl = input.nextElementSibling;
+        if (!errorEl || !errorEl.classList.contains('error-message')) {
+            errorEl = document.createElement('div');
+            errorEl.className = 'error-message';
+            input.parentNode.insertBefore(errorEl, input.nextSibling);
+        }
+        errorEl.textContent = message;
+    },
+
+    /**
+     * Clear field error
+     */
+    clearFieldError(input) {
+        input.classList.remove('error');
+        const errorEl = input.nextElementSibling;
+        if (errorEl && errorEl.classList.contains('error-message')) {
+            errorEl.remove();
+        }
+    },
+
+    /**
+     * Handle form submission
+     */
+    async handleSubmit(form, url, method = 'POST', options = {}) {
+        const {
+            onSuccess = null,
+            onError = null,
+            onSuccessMessage = '操作成功',
+            onErrorMessage = '操作失败'
+        } = options;
+
+        // Validate form
+        const validation = this.validate(form);
+        if (!validation.valid) {
+            validation.errors.forEach(error => {
+                Toast.error(error);
+            });
+            return false;
+        }
+
+        // Get form data
+        const data = this.getFormData(form);
+
+        // Disable submit button
+        const submitBtn = form.querySelector('[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.dataset.originalText = submitBtn.textContent;
+            submitBtn.textContent = '提交中...';
+        }
+
+        try {
+            // Make API request
+            let response;
+            switch (method.toUpperCase()) {
+                case 'POST':
+                    response = await API.post(url, data);
+                    break;
+                case 'PUT':
+                    response = await API.put(url, data);
+                    break;
+                case 'PATCH':
+                    response = await API.patch(url, data);
+                    break;
+                default:
+                    throw new Error(`Unsupported method: ${method}`);
+            }
+
+            if (response.success) {
+                if (onSuccessMessage) {
+                    Toast.success(onSuccessMessage);
+                }
+                this.closeModal();
+                if (onSuccess) onSuccess(response);
+                return true;
+            } else {
+                Toast.error(response.error || onErrorMessage);
+                if (onError) onError(response);
+                return false;
+            }
+        } catch (error) {
+            Toast.error(onErrorMessage);
+            if (onError) onError(error);
+            return false;
+        } finally {
+            // Re-enable submit button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = submitBtn.dataset.originalText || '提交';
+            }
+        }
+    }
+};
+
+// Toast notification system
+const Toast = {
+    show(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        const icon = this.getIcon(type);
+
+        toast.innerHTML = `
+            <span class="toast-icon">${icon}</span>
+            <span class="toast-message">${message}</span>
+            <button class="toast-close">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+            </button>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto remove
+        const timeout = setTimeout(() => {
+            toast.remove();
+        }, duration);
+
+        // Close button
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            clearTimeout(timeout);
+            toast.remove();
+        });
+
+        return toast;
+    },
+
+    success(message, duration) {
+        return this.show(message, 'success', duration);
+    },
+
+    error(message, duration) {
+        return this.show(message, 'error', duration);
+    },
+
+    warning(message, duration) {
+        return this.show(message, 'warning', duration);
+    },
+
+    info(message, duration) {
+        return this.show(message, 'info', duration);
+    },
+
+    getIcon(type) {
+        const icons = {
+            success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
+            error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',
+            warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>',
+            info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>'
+        };
+        return icons[type] || icons.info;
+    }
+};
+
+// Make available globally
+window.Forms = Forms;
+window.Toast = Toast;

@@ -110,9 +110,7 @@ class MySQLDialect(BaseDialect):
         if config.ssl_mode:
             valid_modes = ["disabled", "preferred", "required", "verify_ca", "verify_identity"]
             if config.ssl_mode not in valid_modes:
-                errors.append(
-                    f"Invalid ssl_mode: {config.ssl_mode}. Must be one of {valid_modes}"
-                )
+                errors.append(f"Invalid ssl_mode: {config.ssl_mode}. Must be one of {valid_modes}")
 
         return errors
 

@@ -20,6 +20,7 @@ logger = get_logger(__name__)
 # Try to import trafilatura
 try:
     import trafilatura
+
     TRAFILATURA_AVAILABLE = True
 except ImportError:
     TRAFILATURA_AVAILABLE = False
@@ -76,9 +77,7 @@ class ContentFetcher:
             headers={"User-Agent": self.user_agent},
         )
 
-        logger.info(
-            f"ContentFetcher initialized (trafilatura={TRAFILATURA_AVAILABLE})"
-        )
+        logger.info(f"ContentFetcher initialized (trafilatura={TRAFILATURA_AVAILABLE})")
 
     def _is_valid_url(self, url: str) -> bool:
         """Check if URL is valid for content fetching.
@@ -118,18 +117,14 @@ class ContentFetcher:
                 # Check content length
                 content_length = len(response.content)
                 if content_length > self.max_content_length:
-                    logger.warning(
-                        f"Content too large ({content_length} bytes) for {url}"
-                    )
+                    logger.warning(f"Content too large ({content_length} bytes) for {url}")
                     return None
 
                 response.raise_for_status()
                 return response.text
 
             except httpx.HTTPStatusError as e:
-                logger.warning(
-                    f"HTTP error on attempt {attempt + 1}/{self.max_retries}: {e}"
-                )
+                logger.warning(f"HTTP error on attempt {attempt + 1}/{self.max_retries}: {e}")
                 if attempt == self.max_retries - 1:
                     return None
             except Exception as e:
@@ -165,9 +160,7 @@ class ContentFetcher:
             )
 
             if not content or len(content.strip()) < 50:
-                return ContentFetchResult(
-                    success=False, error="trafilatura: no content extracted"
-                )
+                return ContentFetchResult(success=False, error="trafilatura: no content extracted")
 
             # Extract metadata
             metadata = trafilatura.metadata.extract_metadata(html)
@@ -204,9 +197,7 @@ class ContentFetcher:
             content_html = doc.summary()
 
             if not content_html:
-                return ContentFetchResult(
-                    success=False, error="readability: no content extracted"
-                )
+                return ContentFetchResult(success=False, error="readability: no content extracted")
 
             # Convert to plain text
             from bs4 import BeautifulSoup
@@ -220,9 +211,7 @@ class ContentFetcher:
             content = soup.get_text(separator="\n", strip=True)
 
             if len(content.strip()) < 50:
-                return ContentFetchResult(
-                    success=False, error="readability: content too short"
-                )
+                return ContentFetchResult(success=False, error="readability: content too short")
 
             return ContentFetchResult(
                 success=True,
@@ -256,12 +245,12 @@ class ContentFetcher:
 
             # Extract paragraphs
             paragraphs = soup.find_all("p")
-            content = "\n\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+            content = "\n\n".join(
+                p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True)
+            )
 
             if len(content.strip()) < 50:
-                return ContentFetchResult(
-                    success=False, error="fallback: content too short"
-                )
+                return ContentFetchResult(success=False, error="fallback: content too short")
 
             # Get title
             title_tag = soup.find("title")
@@ -310,9 +299,7 @@ class ContentFetcher:
         # Final fallback
         return self._extract_with_fallback(html, url)
 
-    def fetch_multiple(
-        self, urls: list[str]
-    ) -> dict[str, ContentFetchResult]:
+    def fetch_multiple(self, urls: list[str]) -> dict[str, ContentFetchResult]:
         """Fetch content from multiple URLs.
 
         Args:

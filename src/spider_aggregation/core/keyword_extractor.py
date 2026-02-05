@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 try:
     import jieba
     import jieba.analyse
+
     JIEBA_AVAILABLE = True
 except ImportError:
     JIEBA_AVAILABLE = False
@@ -26,6 +27,7 @@ except ImportError:
 # NLTK imports - lazy loaded to avoid startup issues
 NLTK_AVAILABLE = False
 _nltk_modules = None
+
 
 def _ensure_nltk():
     """Lazy-load NLTK modules only when needed."""
@@ -103,9 +105,7 @@ class KeywordExtractor:
         self._stopwords = set()
         self._nltk_loaded = False
 
-        logger.info(
-            f"KeywordExtractor initialized (NLTK=lazy, jieba={JIEBA_AVAILABLE})"
-        )
+        logger.info(f"KeywordExtractor initialized (NLTK=lazy, jieba={JIEBA_AVAILABLE})")
 
     def _load_nltk_if_needed(self):
         """Load NLTK modules on first use."""
@@ -180,14 +180,18 @@ class KeywordExtractor:
         # Try to load NLTK on first use
         if not self._load_nltk_if_needed():
             # Fallback: simple word frequency
-            words = re.findall(r"\b[a-zA-Z]{" + str(self.min_keyword_length) + r",}\b", text.lower())
+            words = re.findall(
+                r"\b[a-zA-Z]{" + str(self.min_keyword_length) + r",}\b", text.lower()
+            )
             word_freq = Counter(words)
             return [(word, freq) for word, freq in word_freq.most_common(self.max_keywords * 2)]
 
         nltk_modules = _ensure_nltk()
         if not nltk_modules:
             # Fallback if NLTK load failed
-            words = re.findall(r"\b[a-zA-Z]{" + str(self.min_keyword_length) + r",}\b", text.lower())
+            words = re.findall(
+                r"\b[a-zA-Z]{" + str(self.min_keyword_length) + r",}\b", text.lower()
+            )
             word_freq = Counter(words)
             return [(word, freq) for word, freq in word_freq.most_common(self.max_keywords * 2)]
 
@@ -214,16 +218,12 @@ class KeywordExtractor:
         # Normalize by max frequency
         if keyword_freq:
             max_freq = max(keyword_freq.values())
-            keyword_scores = {
-                word: freq / max_freq for word, freq in keyword_freq.items()
-            }
+            keyword_scores = {word: freq / max_freq for word, freq in keyword_freq.items()}
         else:
             keyword_scores = {}
 
         # Sort by score
-        sorted_keywords = sorted(
-            keyword_scores.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_keywords = sorted(keyword_scores.items(), key=lambda x: x[1], reverse=True)
 
         return sorted_keywords[: self.max_keywords * 2]
 
@@ -286,9 +286,7 @@ class KeywordExtractor:
             all_keywords[word] = all_keywords.get(word, 0) + score
 
         # Sort by score
-        sorted_keywords = sorted(
-            all_keywords.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_keywords = sorted(all_keywords.items(), key=lambda x: x[1], reverse=True)
 
         return sorted_keywords[: self.max_keywords * 2]
 

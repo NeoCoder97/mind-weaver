@@ -34,15 +34,22 @@ class DatabaseConfig(BaseSettings):
     type: str = Field(default="sqlite", description="Database type: sqlite, postgresql, mysql")
 
     # SQLite configuration
-    path: str = Field(default="data/spider_aggregation.db", description="Database file path (SQLite)")
+    path: str = Field(
+        default="data/spider_aggregation.db", description="Database file path (SQLite)"
+    )
 
     # PostgreSQL/MySQL configuration
     host: str | None = Field(default=None, description="Database host (PostgreSQL/MySQL)")
-    port: int | None = Field(default=None, description="Database port (default: 5432 for PostgreSQL, 3306 for MySQL)")
+    port: int | None = Field(
+        default=None, description="Database port (default: 5432 for PostgreSQL, 3306 for MySQL)"
+    )
     database: str | None = Field(default=None, description="Database name (PostgreSQL/MySQL)")
     user: str | None = Field(default=None, description="Database user (PostgreSQL/MySQL)")
     password: str | None = Field(default=None, description="Database password (PostgreSQL/MySQL)")
-    ssl_mode: str | None = Field(default=None, description="SSL mode: prefer/require (PostgreSQL), preferred/required (MySQL)")
+    ssl_mode: str | None = Field(
+        default=None,
+        description="SSL mode: prefer/require (PostgreSQL), preferred/required (MySQL)",
+    )
 
     # Common settings
     echo: bool = Field(default=False, description="Echo SQL statements")
@@ -132,7 +139,7 @@ class FetcherConfig(BaseSettings):
     timeout_seconds: int = Field(default=30, ge=1, le=300, description="Request timeout")
     user_agent: str = Field(
         default="Mind-Aggregation/0.1.0 (+https://github.com/mind-weaver)",
-        description="User-Agent header"
+        description="User-Agent header",
     )
 
     # Retry settings
@@ -141,10 +148,7 @@ class FetcherConfig(BaseSettings):
 
     # Content settings
     max_content_length: int = Field(
-        default=100_000,
-        ge=1_000,
-        le=1_000_000,
-        description="Maximum content length in bytes"
+        default=100_000, ge=1_000, le=1_000_000, description="Maximum content length in bytes"
     )
 
     # Follow redirects
@@ -153,12 +157,10 @@ class FetcherConfig(BaseSettings):
 
     # Feed entry limits
     max_entries_per_feed: int = Field(
-        default=0, ge=0, le=1000,
-        description="Max entries to fetch per feed (0=unlimited)"
+        default=0, ge=0, le=1000, description="Max entries to fetch per feed (0=unlimited)"
     )
     fetch_recent_days: int = Field(
-        default=30, ge=0, le=365,
-        description="Only fetch entries from last N days (0=unlimited)"
+        default=30, ge=0, le=365, description="Only fetch entries from last N days (0=unlimited)"
     )
 
 
@@ -176,10 +178,7 @@ class DeduplicatorConfig(BaseSettings):
 
     # Similarity threshold (0.0 - 1.0)
     title_similarity_threshold: float = Field(
-        default=0.85,
-        ge=0.0,
-        le=1.0,
-        description="Title similarity threshold"
+        default=0.85, ge=0.0, le=1.0, description="Title similarity threshold"
     )
 
     # Check options
@@ -196,7 +195,7 @@ class LoggingConfig(BaseSettings):
     level: str = Field(default="INFO", description="Log level")
     format: str = Field(
         default="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-        description="Log format"
+        description="Log format",
     )
 
     # File logging
@@ -237,9 +236,7 @@ class FeedConfig(BaseSettings):
 
     # Error handling
     max_consecutive_errors: int = Field(
-        default=10,
-        ge=1,
-        description="Max consecutive errors before disabling feed"
+        default=10, ge=1, description="Max consecutive errors before disabling feed"
     )
     error_backoff_hours: int = Field(default=1, ge=0, description="Backoff hours after error")
 
@@ -267,14 +264,11 @@ class ContentFetcherConfig(BaseSettings):
     max_retries: int = Field(default=3, ge=0, le=10, description="Maximum retry attempts")
     retry_delay_seconds: int = Field(default=5, ge=1, description="Retry delay")
     max_content_length: int = Field(
-        default=500_000,
-        ge=10_000,
-        le=5_000_000,
-        description="Maximum content length in bytes"
+        default=500_000, ge=10_000, le=5_000_000, description="Maximum content length in bytes"
     )
     user_agent: str = Field(
         default="Mind-Aggregation/0.2.0 (+https://github.com/mind-weaver)",
-        description="User-Agent header"
+        description="User-Agent header",
     )
 
 
@@ -304,6 +298,64 @@ class SummarizerConfig(BaseSettings):
     ai_max_tokens: int = Field(default=150, ge=50, le=500, description="Max tokens for AI summary")
 
 
+class LLMConfig(BaseSettings):
+    """LLM configuration for AI-powered features."""
+
+    model_config = SettingsConfigDict(env_prefix="LLM_")
+
+    enabled: bool = Field(default=False, description="Enable LLM features")
+    provider: str = Field(default="openai", description="Provider: openai, zhipuai, deepseek")
+    api_base: str = Field(default="https://api.openai.com/v1", description="API base URL")
+    api_key: str = Field(default="", description="API key")
+    model: str = Field(default="gpt-4o-mini", description="Model name")
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0, description="Sampling temperature")
+    max_tokens: int = Field(default=1000, ge=100, le=4000, description="Max tokens per request")
+    timeout_seconds: int = Field(default=60, ge=10, le=300, description="Request timeout")
+
+
+class EmailConfig(BaseSettings):
+    """Email configuration for digest delivery.
+
+    Environment variables:
+    - EMAIL_TO_ADDRESSES: Use JSON array format, e.g., '["a@example.com", "b@example.com"]'
+    """
+
+    model_config = SettingsConfigDict(env_prefix="EMAIL_")
+
+    enabled: bool = Field(default=False, description="Enable email digest")
+    smtp_host: str = Field(default="smtp.gmail.com", description="SMTP server host")
+    smtp_port: int = Field(default=587, ge=1, le=65535, description="SMTP server port")
+    username: str = Field(default="", description="SMTP username")
+    password: str = Field(default="", description="SMTP password")
+    use_tls: bool = Field(default=True, description="Use TLS encryption")
+    from_address: str = Field(default="mindweaver@local", description="From email address")
+    to_addresses: list[str] = Field(default_factory=list, description="List of recipient emails")
+
+
+class DigestConfig(BaseSettings):
+    """Digest configuration for scheduled summaries.
+
+    Environment variables:
+    - DIGEST_SCHEDULES: Use JSON array format, e.g., '["0 10 * * *", "0 16 * * *"]'
+    """
+
+    model_config = SettingsConfigDict(env_prefix="DIGEST_")
+
+    enabled: bool = Field(default=False, description="Enable digest generation")
+    # Cron expressions for 10:00 and 16:00 daily
+    schedules: list[str] = Field(
+        default_factory=lambda: ["0 10 * * *", "0 16 * * *"],
+        description="Cron schedules for digest generation",
+    )
+    entries_per_feed: int = Field(default=2, ge=1, le=10, description="Entries to include per feed")
+    max_age_hours: int = Field(
+        default=24, ge=1, le=168, description="Only include entries from last N hours"
+    )
+    # Aggregation mode: aggregate (all feeds in one summary) or individual (per-feed summary)
+    mode: str = Field(default="aggregate", description="Mode: aggregate or individual")
+    subject_prefix: str = Field(default="[MindWeaver]", description="Email subject prefix")
+
+
 class FilterConfig(BaseSettings):
     """Filter engine configuration for Phase 2."""
 
@@ -322,6 +374,7 @@ class Config(BaseSettings):
         env_file_encoding="utf-8",
         env_prefix="MIND_",
         case_sensitive=False,
+        extra="ignore",  # Ignore extra env vars (handled by sub-configs)
     )
 
     # Application
@@ -342,6 +395,9 @@ class Config(BaseSettings):
     keyword_extractor: KeywordExtractorConfig = Field(default_factory=KeywordExtractorConfig)
     summarizer: SummarizerConfig = Field(default_factory=SummarizerConfig)
     filter: FilterConfig = Field(default_factory=FilterConfig)
+    llm: LLMConfig = Field(default_factory=LLMConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
+    digest: DigestConfig = Field(default_factory=DigestConfig)
 
     # Paths
     config_dir: str = Field(default="config", description="Configuration directory")
@@ -397,8 +453,22 @@ def load_config_from_yaml(yaml_path: str) -> Config:
     nested_configs = {}
 
     for key, value in config_dict.items():
-        if key in ["database", "scheduler", "fetcher", "deduplicator", "logging", "feed", "web",
-                   "content_fetcher", "keyword_extractor", "summarizer", "filter"]:
+        if key in [
+            "database",
+            "scheduler",
+            "fetcher",
+            "deduplicator",
+            "logging",
+            "feed",
+            "web",
+            "content_fetcher",
+            "keyword_extractor",
+            "summarizer",
+            "filter",
+            "llm",
+            "email",
+            "digest",
+        ]:
             nested_configs[key] = value
         else:
             main_config[key] = value
@@ -416,6 +486,9 @@ def load_config_from_yaml(yaml_path: str) -> Config:
         "keyword_extractor": KeywordExtractorConfig,
         "summarizer": SummarizerConfig,
         "filter": FilterConfig,
+        "llm": LLMConfig,
+        "email": EmailConfig,
+        "digest": DigestConfig,
     }
 
     for key, config_class in config_classes.items():

@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 if TYPE_CHECKING:
     from sqlalchemy.orm import Query
 
-from spider_aggregation.models.filter_rule import FilterRuleModel, FilterRuleCreate, FilterRuleUpdate
+from spider_aggregation.models.filter_rule import (
+    FilterRuleModel,
+    FilterRuleCreate,
+    FilterRuleUpdate,
+)
 from spider_aggregation.storage.repositories.base import BaseRepository
 from spider_aggregation.storage.mixins import FilterQueryMixin
 
@@ -41,17 +45,13 @@ class FilterRuleRepository(
         Returns:
             FilterRuleModel instance or None
         """
-        return self.session.query(FilterRuleModel).filter(
-            FilterRuleModel.name == name
-        ).first()
+        return self.session.query(FilterRuleModel).filter(FilterRuleModel.name == name).first()
 
     def _get_complex_filter_keys(self) -> set[str]:
         """Return filter keys that require complex handling."""
         return {"rule_type", "match_type"}
 
-    def _apply_complex_filters(
-        self, query, filters: dict
-    ) -> "Query[FilterRuleModel]":
+    def _apply_complex_filters(self, query, filters: dict) -> "Query[FilterRuleModel]":
         """Apply rule_type and match_type filters."""
         if "rule_type" in filters and filters["rule_type"] is not None:
             query = query.filter(FilterRuleModel.rule_type == filters["rule_type"])

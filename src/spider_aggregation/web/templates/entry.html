@@ -1,60 +1,183 @@
 {% extends "base.html" %}
 
-{% block title %}{{ entry.title }} - MindWeaver{% endblock %}
+{% block title %}{{ entry.title or '(无标题)' }} - MindWeaver{% endblock %}
 
-{% block content %}
-<div class="page-header">
-    <a href="{{ url_for('index') }}" class="btn btn-small">&larr; 返回文章列表</a>
+{% block header_actions %}
+<div class="flex gap-sm">
+    <button class="btn btn-secondary btn-sm" id="mark-read-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        {{ '标记未读' if not entry.enabled else '标记已读' }}
+    </button>
+    <button class="btn btn-ghost btn-sm" id="delete-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+        </svg>
+        删除
+    </button>
+    <a href="{{ entry.link }}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+        </svg>
+        原文链接
+    </a>
 </div>
-
-<article class="entry-detail">
-    <h1 class="entry-detail-title">{{ entry.title }}</h1>
-
-    <div class="entry-detail-meta">
-        {% if entry.author %}
-        <span class="entry-author">作者: {{ entry.author }}</span>
-        {% endif %}
-        {% if entry.published_at %}
-        <span class="entry-date">{{ entry.published_at|format_datetime }}</span>
-        {% endif %}
-        {% if entry.language %}
-        <span class="entry-language">{{ entry.language.upper() }}</span>
-        {% endif %}
-        {% if entry.reading_time_seconds %}
-        <span class="entry-reading-time">
-            阅读时间: {{ (entry.reading_time_seconds // 60) }} 分钟
-        </span>
-        {% endif %}
-    </div>
-
-    {% if entry.tags_list %}
-    <div class="entry-tags">
-        {% for tag in entry.tags_list %}
-        <span class="tag">{{ tag }}</span>
-        {% endfor %}
-    </div>
-    {% endif %}
-
-    <div class="entry-detail-content">
-        {% if entry.content %}
-        {{ entry.content|nl2br }}
-        {% elif entry.summary %}
-        {{ entry.summary|nl2br }}
-        {% else %}
-        <p class="text-muted">暂无内容</p>
-        {% endif %}
-    </div>
-
-    <div class="entry-detail-actions">
-        <a href="{{ entry.link }}" target="_blank" rel="noopener" class="btn btn-primary">查看原文</a>
-    </div>
-</article>
-
 {% endblock %}
 
-{% block scripts %}
+{% block content %}
+<div class="page">
+    <div class="page-content" style="max-width: 800px; margin: 0 auto;">
+        <!-- Entry Header -->
+        <div style="margin-bottom: 24px;">
+            <div class="flex items-center gap-sm" style="margin-bottom: 12px;">
+                <span class="badge badge-info">{{ entry.feed_name }}</span>
+                {% if not entry.enabled %}
+                <span class="badge badge-default">已读</span>
+                {% else %}
+                <span class="badge badge-success">未读</span>
+                {% endif %}
+                {% if entry.tags_list %}
+                {% for tag in entry.tags_list %}
+                <span class="badge badge-default">{{ tag }}</span>
+                {% endfor %}
+                {% endif %}
+            </div>
+            <h1 style="font-size: 1.75rem; font-weight: 400; margin-bottom: 12px;">
+                {{ entry.title or '(无标题)' }}
+            </h1>
+            <div class="text-secondary" style="font-size: 0.875rem;">
+                {{ entry.published_at | format_datetime }}
+                {% if entry.author %}
+                · 作者: {{ entry.author }}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Entry Content -->
+        <div class="card">
+            <div class="card-body article-content">
+                {% if entry.full_content %}
+                {{ entry.full_content | safe }}
+                {% else %}
+                {{ entry.content | safe }}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Entry Meta -->
+        <div class="card" style="margin-top: 24px;">
+            <div class="card-header">文章信息</div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>来源</label>
+                        <div><a href="{{ entry.feed_url }}" target="_blank">{{ entry.feed_name }}</a></div>
+                    </div>
+                    <div class="form-group">
+                        <label>发布时间</label>
+                        <div>{{ entry.published_at | format_datetime }}</div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>文章链接</label>
+                    <div><a href="{{ entry.link }}" target="_blank">{{ entry.link }}</a></div>
+                </div>
+                {% if entry.language %}
+                <div class="form-group">
+                    <label>语言</label>
+                    <div>{{ entry.language }}</div>
+                </div>
+                {% endif %}
+                {% if entry.reading_time %}
+                <div class="form-group">
+                    <label>阅读时间</label>
+                    <div>{{ entry.reading_time }} 分钟</div>
+                </div>
+                {% endif %}
+                {% if entry.tags_list %}
+                <div class="form-group">
+                    <label>标签</label>
+                    <div>
+                        {% for tag in entry.tags_list %}
+                        <span class="badge badge-default" style="margin-right: 4px;">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
 <script>
-// Register nl2br filter for Jinja2 is not available by default
-// This is handled by CSS white-space: pre-wrap
+const entryId = {{ entry.id }};
+let currentEnabled = {{ 'true' if entry.enabled else 'false' }};
+
+// Toggle read status (enabled: true = 未读, false = 已读)
+async function toggleReadStatus() {
+    const result = await API.entries.put(entryId, { enabled: !currentEnabled });
+    if (result.success) {
+        currentEnabled = !currentEnabled;
+        updateReadButton();
+        Toast.success(currentEnabled ? '已标记为未读' : '已标记为已读');
+    } else {
+        Toast.error(result.error || '操作失败');
+    }
+}
+
+function updateReadButton() {
+    const btn = document.getElementById('mark-read-btn');
+    if (btn) {
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            ${currentEnabled ? '标记已读' : '标记未读'}
+        `;
+    }
+}
+
+// Mark read button
+document.getElementById('mark-read-btn')?.addEventListener('click', toggleReadStatus);
+
+// Delete button
+document.getElementById('delete-btn')?.addEventListener('click', () => {
+    Forms.confirm('确定要删除这篇文章吗？', {
+        title: '删除文章',
+        confirmText: '删除',
+        onConfirm: async () => {
+            const result = await API.entries.delete(entryId);
+            if (result.success) {
+                Toast.success('删除成功');
+                window.location.href = '/';
+            } else {
+                Toast.error(result.error || '删除失败');
+            }
+        }
+    });
+});
+
+// Auto mark as read after viewing (set enabled to false)
+if (currentEnabled) {
+    setTimeout(async () => {
+        const result = await API.entries.put(entryId, { enabled: false });
+        if (result.success) {
+            currentEnabled = false;
+            updateReadButton();
+        }
+    }, 3000);
+}
+
+// Register keyboard shortcuts
+Keyboard.register('r', () => toggleReadStatus(), '切换已读/未读状态');
+Keyboard.register('Delete', () => {
+    document.getElementById('delete-btn')?.click();
+}, '删除文章');
+Keyboard.register('Escape', () => {
+    window.location.href = '/';
+}, '返回列表');
 </script>
 {% endblock %}

@@ -33,53 +33,45 @@ class EntryBlueprint(CRUDBlueprint):
 
     def _register_custom_routes(self):
         """Register custom entry-specific routes."""
+        # Override the default list route with our paginated version
+        self.blueprint.add_url_rule("", view_func=self._list, methods=["GET"])
         # Batch delete entries
+        self.blueprint.add_url_rule("/batch/delete", view_func=self._batch_delete, methods=["POST"])
+        # Batch mark as read
         self.blueprint.add_url_rule(
-            "/batch/delete",
-            view_func=self._batch_delete,
-            methods=["POST"]
+            "/batch/mark-read", view_func=self._batch_mark_read, methods=["POST"]
         )
         # Batch fetch content
         self.blueprint.add_url_rule(
-            "/batch/fetch-content",
-            view_func=self._batch_fetch_content,
-            methods=["POST"]
+            "/batch/fetch-content", view_func=self._batch_fetch_content, methods=["POST"]
         )
         # Batch extract keywords
         self.blueprint.add_url_rule(
-            "/batch/extract-keywords",
-            view_func=self._batch_extract_keywords,
-            methods=["POST"]
+            "/batch/extract-keywords", view_func=self._batch_extract_keywords, methods=["POST"]
         )
         # Batch summarize
         self.blueprint.add_url_rule(
-            "/batch/summarize",
-            view_func=self._batch_summarize,
-            methods=["POST"]
+            "/batch/summarize", view_func=self._batch_summarize, methods=["POST"]
         )
         # Get entries by category
         self.blueprint.add_url_rule(
-            "/by-category/<int:category_id>",
-            view_func=self._by_category,
-            methods=["GET"]
+            "/by-category/<int:category_id>", view_func=self._by_category, methods=["GET"]
         )
         # Get entries by category name
         self.blueprint.add_url_rule(
-            "/by-category-name/<category_name>",
-            view_func=self._by_category_name,
-            methods=["GET"]
+            "/by-category-name/<category_name>", view_func=self._by_category_name, methods=["GET"]
         )
         # Search within category
         self.blueprint.add_url_rule(
             "/search-by-category/<int:category_id>",
             view_func=self._search_by_category,
-            methods=["GET"]
+            methods=["GET"],
         )
         # Get entry statistics by category
         self.blueprint.add_url_rule(
             "/by-category/<int:category_id>/stats",
             view_func=self._stats_by_category,
-            methods=["GET"]
+            methods=["GET"],
         )
 
     def get_repository_class(self):
@@ -137,17 +129,13 @@ class EntryBlueprint(CRUDBlueprint):
 
     def _create(self):
         """Override create - entries should not be created via API."""
-        return api_response(
-            success=False,
-            error="条目应通过订阅源获取自动创建",
-            status=403
-        )
+        return api_response(success=False, error="条目应通过订阅源获取自动创建", status=403)
 
     def _batch_delete(self):
         """Batch delete entries by IDs.
 
         Request body:
-            {"entry_ids": [1, 2, 3, ...]}
+            {"ids": [1, 2, 3, ...]} or {"entry_ids": [1, 2, 3, ...]}
 
         Returns:
             API response with number of deleted entries
@@ -155,10 +143,11 @@ class EntryBlueprint(CRUDBlueprint):
         from spider_aggregation.storage.database import DatabaseManager
 
         data = request.get_json()
-        entry_ids = data.get("entry_ids", [])
+        # Accept both 'ids' and 'entry_ids' for compatibility
+        entry_ids = data.get("ids") or data.get("entry_ids", [])
 
         if not entry_ids:
-            return api_response(success=False, error="entry_ids为必填项", status=400)
+            return api_response(success=False, error="ids为必填项", status=400)
 
         db_manager = DatabaseManager(self.db_path)
 
@@ -167,10 +156,104 @@ class EntryBlueprint(CRUDBlueprint):
             count = repo.delete_by_ids(entry_ids)
 
         return api_response(
-            success=True,
-            data={"deleted_count": count},
-            message=f"成功删除 {count} 条条目"
+            success=True, data={"deleted_count": count}, message=f"成功删除 {count} 条条目"
         )
+
+    def _batch_mark_read(self):
+        """Batch mark entries as read by IDs.
+
+        Request body:
+            {"ids": [1, 2, 3, ...]}
+
+        Returns:
+            API response with number of updated entries
+        """
+        from spider_aggregation.storage.database import DatabaseManager
+
+        data = request.get_json()
+        entry_ids = data.get("ids", [])
+
+        if not entry_ids:
+            return api_response(success=False, error="ids为必填项", status=400)
+
+        db_manager = DatabaseManager(self.db_path)
+
+        with db_manager.session() as session:
+            repo = self._get_repository(session)
+            from spider_aggregation.models.entry import EntryUpdate
+
+            count = 0
+            for entry_id in entry_ids:
+                entry = repo.get_by_id(entry_id)
+                if entry:
+                    repo.update(entry, EntryUpdate(enabled=False))
+                    count += 1
+
+        return api_response(
+            success=True, data={"updated_count": count}, message=f"成功标记 {count} 条条目为已读"
+        )
+
+    def _list(self):
+        """List entries with pagination support.
+
+        Query params:
+            page: Page number (default: 1)
+            page_size: Items per page (default: 20)
+            feed_id: Filter by feed ID (optional)
+            q: Search query (optional)
+            order_by: Field to order by (default: published_at)
+            order_direction: asc or desc (default: desc)
+
+        Returns:
+            API response with paginated entries
+        """
+        from spider_aggregation.storage.database import DatabaseManager
+
+        page = request.args.get("page", 1, type=int)
+        page_size = request.args.get("page_size", 20, type=int)
+        feed_id = request.args.get("feed_id", type=int)
+        search_query = request.args.get("q", "")
+        order_by = request.args.get("order_by", "published_at")
+        order_direction = request.args.get("order_direction", "desc")
+
+        db_manager = DatabaseManager(self.db_path)
+
+        with db_manager.session() as session:
+            repo = self._get_repository(session)
+
+            # Handle search
+            if search_query:
+                entries = repo.search(
+                    search_query,
+                    feed_id=feed_id,
+                    limit=page_size,
+                    offset=(page - 1) * page_size,
+                )
+                total = len(entries)  # Approximate for search
+            else:
+                # Normal list with pagination
+                entries = repo.list(
+                    feed_id=feed_id,
+                    limit=page_size,
+                    offset=(page - 1) * page_size,
+                    order_by=order_by,
+                    order_desc=(order_direction == "desc"),
+                )
+                total = repo.count(feed_id=feed_id)
+
+            # Serialize entries with additional fields
+            data = []
+            for entry in entries:
+                entry_dict = self.serialize(entry)
+                # Add feed_name for display
+                if entry.feed:
+                    entry_dict["feed_name"] = entry.feed.name
+                data.append(entry_dict)
+
+        # Return response with total count for pagination
+        from flask import jsonify
+
+        return jsonify({"success": True, "data": data, "total": total})
 
     def _batch_fetch_content(self):
         """Batch fetch full content for entries.
@@ -206,6 +289,7 @@ class EntryBlueprint(CRUDBlueprint):
                         if result.success and result.content:
                             # Update entry with fetched content
                             from spider_aggregation.models.entry import EntryUpdate
+
                             update_data = EntryUpdate(content=result.content)
                             repo.update(entry, update_data)
                             updated_count += 1
@@ -215,7 +299,7 @@ class EntryBlueprint(CRUDBlueprint):
         return api_response(
             success=True,
             data={"success": updated_count, "failed": len(entry_ids) - updated_count},
-            message=f"成功获取 {updated_count} 条条目的完整内容"
+            message=f"成功获取 {updated_count} 条条目的完整内容",
         )
 
     def _batch_extract_keywords(self):
@@ -254,6 +338,7 @@ class EntryBlueprint(CRUDBlueprint):
                         # Update entry with keywords (store in tags for now)
                         import json
                         from spider_aggregation.models.entry import EntryUpdate
+
                         update_data = EntryUpdate(tags=keywords)
                         repo.update(entry, update_data)
                         updated_count += 1
@@ -261,7 +346,7 @@ class EntryBlueprint(CRUDBlueprint):
         return api_response(
             success=True,
             data={"success": updated_count, "failed": len(entry_ids) - updated_count},
-            message=f"成功为 {updated_count} 条条目提取关键词"
+            message=f"成功为 {updated_count} 条条目提取关键词",
         )
 
     def _batch_summarize(self):
@@ -298,6 +383,7 @@ class EntryBlueprint(CRUDBlueprint):
 
                     if summary:
                         from spider_aggregation.models.entry import EntryUpdate
+
                         update_data = EntryUpdate(summary=summary)
                         repo.update(entry, update_data)
                         updated_count += 1
@@ -305,7 +391,7 @@ class EntryBlueprint(CRUDBlueprint):
         return api_response(
             success=True,
             data={"success": updated_count, "failed": len(entry_ids) - updated_count},
-            message=f"成功为 {updated_count} 条条目生成摘要"
+            message=f"成功为 {updated_count} 条条目生成摘要",
         )
 
     def _by_category(self, category_id: int):
@@ -347,7 +433,7 @@ class EntryBlueprint(CRUDBlueprint):
                 "total": total,
                 "page": page,
                 "page_size": page_size,
-            }
+            },
         )
 
     def _by_category_name(self, category_name: str):
@@ -388,7 +474,7 @@ class EntryBlueprint(CRUDBlueprint):
                 "entries": data,
                 "page": page,
                 "page_size": page_size,
-            }
+            },
         )
 
     def _search_by_category(self, category_id: int):
@@ -433,7 +519,7 @@ class EntryBlueprint(CRUDBlueprint):
                 "query": query,
                 "page": page,
                 "page_size": page_size,
-            }
+            },
         )
 
     def _stats_by_category(self, category_id: int):
@@ -461,10 +547,5 @@ class EntryBlueprint(CRUDBlueprint):
             stats = entry_repo.get_stats_by_category(category_id)
 
         return api_response(
-            success=True,
-            data={
-                "category_id": category_id,
-                "category_name": category.name,
-                **stats
-            }
+            success=True, data={"category_id": category_id, "category_name": category.name, **stats}
         )

@@ -16,9 +16,7 @@ class FilterRuleModel(Base):
     __tablename__ = "filter_rules"
 
     # Composite index for enabled rules query
-    __table_args__ = (
-        Index("ix_filter_rules_enabled_priority", "enabled", "priority"),
-    )
+    __table_args__ = (Index("ix_filter_rules_enabled_priority", "enabled", "priority"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -28,9 +26,7 @@ class FilterRuleModel(Base):
     rule_type: Mapped[str] = mapped_column(
         String(50), nullable=False  # keyword, regex, tag, language
     )
-    match_type: Mapped[str] = mapped_column(
-        String(50), nullable=False  # include, exclude
-    )
+    match_type: Mapped[str] = mapped_column(String(50), nullable=False)  # include, exclude
     pattern: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
@@ -53,15 +49,9 @@ class FilterRuleBase(BaseModel):
     name: str = Field(..., max_length=500, description="Rule name")
     enabled: bool = Field(default=True, description="Whether the rule is enabled")
     rule_type: str = Field(
-        ...,
-        max_length=50,
-        description="Rule type: keyword, regex, tag, language"
+        ..., max_length=50, description="Rule type: keyword, regex, tag, language"
     )
-    match_type: str = Field(
-        ...,
-        max_length=50,
-        description="Match type: include, exclude"
-    )
+    match_type: str = Field(..., max_length=50, description="Match type: include, exclude")
     pattern: str = Field(..., description="Pattern to match")
     priority: int = Field(default=0, ge=0, description="Rule priority (higher first)")
 

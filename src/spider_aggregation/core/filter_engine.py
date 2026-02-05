@@ -135,7 +135,7 @@ class FilterEngine:
 
             pattern_lower = pattern.lower()
             return any(pattern_lower in tag.lower() for tag in tags)
-        except (json.JSONDecodeError, TypeError):
+        except json.JSONDecodeError, TypeError:
             return False
 
     def _match_language(self, pattern: str, language: Optional[str]) -> bool:
@@ -270,9 +270,7 @@ class FilterEngine:
         logger.debug("Filter engine cache cleared")
 
 
-def create_filter_engine(
-    rules: list[FilterRuleModel], cache_size: int = 100
-) -> FilterEngine:
+def create_filter_engine(rules: list[FilterRuleModel], cache_size: int = 100) -> FilterEngine:
     """Factory function to create a FilterEngine.
 
     Args:

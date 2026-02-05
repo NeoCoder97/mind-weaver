@@ -67,8 +67,9 @@ def create_app(
             return "从未"
         try:
             from datetime import datetime, timezone
+
             # If already a datetime object, convert to China timezone
-            if hasattr(value, 'strftime'):
+            if hasattr(value, "strftime"):
                 dt = value
                 # If naive (no timezone), assume UTC
                 if dt.tzinfo is None:
@@ -86,7 +87,7 @@ def create_app(
             china_tz = timezone(timedelta(hours=8))
             dt_china = dt.astimezone(china_tz)
             return dt_china.strftime(format_str)
-        except (ValueError, AttributeError):
+        except ValueError, AttributeError:
             return str(value)
 
     app.jinja_env.filters["format_datetime"] = format_datetime
@@ -103,7 +104,7 @@ def create_app(
         """
         if value is None:
             return ""
-        return Markup(str(value).replace('\n', '<br>\n'))
+        return Markup(str(value).replace("\n", "<br>\n"))
 
     app.jinja_env.filters["nl2br"] = nl2br
 
@@ -201,7 +202,7 @@ def create_app(
                 if entry.tags:
                     try:
                         entry.tags_list = json.loads(entry.tags)
-                    except (json.JSONDecodeError, TypeError):
+                    except json.JSONDecodeError, TypeError:
                         entry.tags_list = []
                 else:
                     entry.tags_list = []
@@ -245,7 +246,9 @@ def create_app(
         db_manager = DatabaseManager(db_path)
 
         with db_manager.session() as session:
-            from spider_aggregation.storage.repositories.filter_rule_repo import FilterRuleRepository
+            from spider_aggregation.storage.repositories.filter_rule_repo import (
+                FilterRuleRepository,
+            )
 
             rule_repo = FilterRuleRepository(session)
             rules = rule_repo.list()
@@ -292,7 +295,7 @@ def create_app(
             if entry.tags:
                 try:
                     entry.tags_list = json.loads(entry.tags)
-                except (json.JSONDecodeError, TypeError):
+                except json.JSONDecodeError, TypeError:
                     entry.tags_list = []
             else:
                 entry.tags_list = []
@@ -377,6 +380,7 @@ def create_app(
     def server_error(e):
         """Handle 500 errors."""
         import traceback
+
         logger.error(f"Server error: {e}\n{traceback.format_exc()}")
         return render_template("500.html"), 500
 

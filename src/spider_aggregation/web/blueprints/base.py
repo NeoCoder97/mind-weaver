@@ -35,9 +35,7 @@ class CRUDBlueprint(ABC):
         """
         self.db_path = db_path
         self.blueprint = Blueprint(
-            self._get_blueprint_name(),
-            self.__class__.__name__,
-            url_prefix=url_prefix
+            self._get_blueprint_name(), self.__class__.__name__, url_prefix=url_prefix
         )
         self._register_routes()
 
@@ -52,7 +50,9 @@ class CRUDBlueprint(ABC):
         self.blueprint.add_url_rule("", view_func=self._create, methods=["POST"])
         self.blueprint.add_url_rule("/<int:id>", view_func=self._update, methods=["PUT", "POST"])
         self.blueprint.add_url_rule("/<int:id>", view_func=self._delete, methods=["DELETE"])
-        self.blueprint.add_url_rule("/<int:id>/toggle", view_func=self._toggle, methods=["PATCH", "POST"])
+        self.blueprint.add_url_rule(
+            "/<int:id>/toggle", view_func=self._toggle, methods=["PATCH", "POST"]
+        )
 
     @abstractmethod
     def get_repository_class(self) -> Type[RepositoryType]:
@@ -203,11 +203,7 @@ class CRUDBlueprint(ABC):
 
             if not item:
                 resource_name = self.get_resource_name()
-                return api_response(
-                    success=False,
-                    error=f"未找到{resource_name}",
-                    status=404
-                )
+                return api_response(success=False, error=f"未找到{resource_name}", status=404)
 
             data = self.serialize(item)
 
@@ -238,11 +234,7 @@ class CRUDBlueprint(ABC):
             # Check if already exists
             if self.check_exists(repo, data):
                 resource_name = self.get_resource_name()
-                return api_response(
-                    success=False,
-                    error=f"{resource_name}已存在",
-                    status=400
-                )
+                return api_response(success=False, error=f"{resource_name}已存在", status=400)
 
             try:
                 create_schema = self.get_create_schema_class()
@@ -274,11 +266,7 @@ class CRUDBlueprint(ABC):
 
             if not item:
                 resource_name = self.get_resource_name()
-                return api_response(
-                    success=False,
-                    error=f"未找到{resource_name}",
-                    status=404
-                )
+                return api_response(success=False, error=f"未找到{resource_name}", status=404)
 
             try:
                 update_schema = self.get_update_schema_class()
@@ -306,11 +294,7 @@ class CRUDBlueprint(ABC):
 
             if not item:
                 resource_name = self.get_resource_name()
-                return api_response(
-                    success=False,
-                    error=f"未找到{resource_name}",
-                    status=404
-                )
+                return api_response(success=False, error=f"未找到{resource_name}", status=404)
 
             repo.delete(item)
             return api_response(
@@ -331,11 +315,7 @@ class CRUDBlueprint(ABC):
 
             if not item:
                 resource_name = self.get_resource_name()
-                return api_response(
-                    success=False,
-                    error=f"未找到{resource_name}",
-                    status=404
-                )
+                return api_response(success=False, error=f"未找到{resource_name}", status=404)
 
             # Toggle enabled status
             item.enabled = not item.enabled

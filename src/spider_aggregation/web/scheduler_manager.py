@@ -7,10 +7,13 @@ eliminating the need for global variables.
 
 from typing import Optional
 
-from flask import Flask, current_app
+from apscheduler.triggers.cron import CronTrigger
+from flask import Flask
 
+from spider_aggregation.config import get_config
 from spider_aggregation.core.scheduler import FeedScheduler
 from spider_aggregation.logger import get_logger
+from spider_aggregation.application import create_digest_service
 from spider_aggregation.storage.database import DatabaseManager
 
 logger = get_logger(__name__)
@@ -112,6 +115,8 @@ class SchedulerManager:
         try:
             self._scheduler.start()
             logger.info("Scheduler started successfully")
+            # Setup digest jobs after scheduler starts
+            self.setup_digest_jobs()
             return True
         except Exception as e:
             logger.error(f"Failed to start scheduler: {e}")
@@ -205,6 +210,112 @@ class SchedulerManager:
         except Exception as e:
             logger.error(f"Failed to remove feed job {feed_id}: {e}")
             return False
+
+    def setup_digest_jobs(self) -> bool:
+        """Setup scheduled digest jobs based on config.
+
+        Returns:
+            True if jobs were set up successfully
+        """
+        if self._scheduler is None:
+            logger.error("Cannot setup digest jobs: scheduler not initialized")
+            return False
+
+        config = get_config()
+        if not config.digest.enabled:
+            logger.info("Digest is disabled, skipping job setup")
+            return True
+
+        # Remove existing digest jobs
+        for job in self._scheduler.scheduler.get_jobs():
+            if job.id.startswith("digest_"):
+                try:
+                    self._scheduler.scheduler.remove_job(job.id)
+                    logger.debug(f"Removed existing digest job: {job.id}")
+                except Exception as e:
+                    logger.warning(f"Failed to remove job {job.id}: {e}")
+
+        # Add new digest jobs
+        for i, cron_expr in enumerate(config.digest.schedules):
+            try:
+                # Parse cron expression (minute hour day month day_of_week)
+                parts = cron_expr.split()
+                if len(parts) != 5:
+                    logger.error(f"Invalid cron expression: {cron_expr}")
+                    continue
+
+                minute, hour, day, month, day_of_week = parts
+
+                job_id = f"digest_{i}"
+                self._scheduler.scheduler.add_job(
+                    func=self._generate_digest_job,
+                    trigger=CronTrigger(
+                        minute=minute,
+                        hour=hour,
+                        day=day,
+                        month=month,
+                        day_of_week=day_of_week,
+                    ),
+                    id=job_id,
+                    name=f"Digest Generation {i+1}",
+                    replace_existing=True,
+                )
+                logger.info(f"Added digest job {job_id} with schedule: {cron_expr}")
+
+            except Exception as e:
+                logger.error(f"Failed to add digest job for {cron_expr}: {e}")
+
+        return True
+
+    def _generate_digest_job(self) -> None:
+        """Job function for generating and sending digest."""
+        if self._db_manager is None:
+            logger.error("Cannot generate digest: no database manager")
+            return
+
+        try:
+            with self._db_manager.session() as session:
+                service = create_digest_service(session)
+                result = service.generate_and_send()
+
+                if result.success:
+                    logger.info(
+                        f"Digest generated and sent: {result.entry_count} entries "
+                        f"from {result.feed_count} feeds"
+                    )
+                else:
+                    logger.error(f"Digest generation failed: {result.error}")
+
+        except Exception as e:
+            logger.exception(f"Error in digest job: {e}")
+
+    def trigger_digest_now(self) -> dict:
+        """Manually trigger digest generation.
+
+        Returns:
+            Dictionary with result status
+        """
+        if self._db_manager is None:
+            return {"success": False, "error": "Database manager not available"}
+
+        try:
+            with self._db_manager.session() as session:
+                service = create_digest_service(session)
+                result = service.generate_and_send(force=True)
+
+                if result.success:
+                    return {
+                        "success": True,
+                        "entry_count": result.entry_count,
+                        "feed_count": result.feed_count,
+                        "subject": result.subject,
+                    }
+                else:
+                    return {"success": False, "error": result.error}
+
+        except Exception as e:
+            logger.exception(f"Error triggering digest: {e}")
+            return {"success": False, "error": str(e)}
 
 
 # Global manager instance (module-level, but stateless until init_app is called)

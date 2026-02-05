@@ -2,26 +2,35 @@
 Facade services for core modules.
 
 This module provides unified entry points (Facade pattern) for all core business logic modules.
-External code (web layer, etc.) should ONLY interact with these services, not direct module classes.
+
+**Architecture Layers:**
+
+    1. core/services/ (Domain Service Facades)
+       - Wraps individual core modules (Fetcher, Parser, Deduplicator, etc.)
+       - One service per core module
+       - Low-level, focused on single domain
+
+    2. application/ (Application Services)
+       - Orchestrates workflows across multiple domains
+       - Higher-level, cross-cutting concerns (EmailService, DigestService)
+       - Coordinates domain services and repositories
+
+    Example Usage:
+        # Domain Service Facade (core/services/)
+        from spider_aggregation.core.services import FetcherService, ParserService
+        fetcher = FetcherService()
+        result = fetcher.fetch_feed(url)
+
+        # Application Service (application/)
+        from spider_aggregation.application import DigestService
+        digest = DigestService(session)
+        digest.generate_and_send()
 
 Architecture Rules:
-    - Web layer MUST use these services, never import from fetcher/parser/deduplicator directly
-    - Each service encapsulates one functional domain
-    - Services use factory functions for component creation
-    - Services provide simple, high-level interfaces
-
-Example:
-    # Correct - Use service facade
-    from spider_aggregation.core.services import FetcherService, ParserService
-
-    fetcher = FetcherService()
-    result = fetcher.fetch_feed(url)
-
-    parser = ParserService()
-    parsed = parser.parse_entry(entry_data)
-
-    # Wrong - Direct import (forbidden)
-    from spider_aggregation.core.fetcher import FeedFetcher  # VIOLATION
+    - Web layer MAY use domain service facades for simple operations
+    - Web layer SHOULD use application services for complex workflows
+    - Never import from core/ modules directly (Fetcher, Parser, etc.)
+    - Application services can use both domain services and repositories
 """
 
 from spider_aggregation.core.services.fetcher_service import FetcherService, create_fetcher_service

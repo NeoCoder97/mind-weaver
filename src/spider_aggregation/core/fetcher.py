@@ -188,7 +188,9 @@ class FeedFetcher:
                 if max_entries and max_entries > 0 and len(entries) > max_entries:
                     original_count = len(entries)
                     entries = entries[:max_entries]
-                    logger.info(f"Limited {url} to {len(entries)} entries (original: {original_count})")
+                    logger.info(
+                        f"Limited {url} to {len(entries)} entries (original: {original_count})"
+                    )
 
                 # Get feed info
                 feed_info = {
@@ -220,7 +222,9 @@ class FeedFetcher:
 
             except httpx.TimeoutException as e:
                 last_error = f"Timeout: {str(e)}"
-                logger.warning(f"Timeout fetching {url} (attempt {attempt + 1}/{self.max_retries + 1})")
+                logger.warning(
+                    f"Timeout fetching {url} (attempt {attempt + 1}/{self.max_retries + 1})"
+                )
 
             except httpx.HTTPStatusError as e:
                 last_error = f"HTTP {e.response.status_code}: {str(e)}"
@@ -321,7 +325,9 @@ class FeedFetcher:
                 if max_entries and len(entries) > max_entries:
                     original_count = len(entries)
                     entries = entries[:max_entries]
-                    logger.info(f"Limited feed {feed_url} to {len(entries)} entries (original: {original_count})")
+                    logger.info(
+                        f"Limited feed {feed_url} to {len(entries)} entries (original: {original_count})"
+                    )
 
                 # Apply date filter if feed.fetch_only_recent is enabled
                 if feed.fetch_only_recent:
@@ -329,6 +335,7 @@ class FeedFetcher:
                     recent_days = config.fetcher.fetch_recent_days
                     if recent_days > 0:
                         from datetime import datetime, timedelta
+
                         cutoff_date = datetime.utcnow() - timedelta(days=recent_days)
                         original_count = len(entries)
 
@@ -337,10 +344,10 @@ class FeedFetcher:
                         for e in entries:
                             # Try to get a date from the entry
                             entry_date = None
-                            if e.get('published_parsed'):
-                                entry_date = datetime(*e['published_parsed'][:6])
-                            elif e.get('updated_parsed'):
-                                entry_date = datetime(*e['updated_parsed'][:6])
+                            if e.get("published_parsed"):
+                                entry_date = datetime(*e["published_parsed"][:6])
+                            elif e.get("updated_parsed"):
+                                entry_date = datetime(*e["updated_parsed"][:6])
 
                             # Keep entry if it has a valid date within the recent period, or if no date is available
                             if entry_date is None or entry_date >= cutoff_date:
@@ -348,7 +355,9 @@ class FeedFetcher:
 
                         entries = filtered_entries
                         if len(entries) < original_count:
-                            logger.info(f"Filtered {original_count - len(entries)} old entries from {feed_url} (older than {recent_days} days)")
+                            logger.info(
+                                f"Filtered {original_count - len(entries)} old entries from {feed_url} (older than {recent_days} days)"
+                            )
 
                 # Get feed info
                 feed_info = {
@@ -388,7 +397,9 @@ class FeedFetcher:
 
             except httpx.TimeoutException as e:
                 last_error = f"Timeout: {str(e)}"
-                logger.warning(f"Timeout fetching {feed_url} (attempt {attempt + 1}/{self.max_retries + 1})")
+                logger.warning(
+                    f"Timeout fetching {feed_url} (attempt {attempt + 1}/{self.max_retries + 1})"
+                )
 
             except httpx.HTTPStatusError as e:
                 last_error = f"HTTP {e.response.status_code}: {str(e)}"
